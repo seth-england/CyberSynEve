@@ -17,6 +17,7 @@ import CSEMessages
 import typing
 import pickle
 import CSEItemModel
+import CSEClientModel
 from flask import Flask, request
 from base64 import b64encode
 from telnetlib import NOP
@@ -26,7 +27,7 @@ class CSEServerLoopData:
       self.m_Scrape = CSEScraper.ScrapeFileFormat()
       self.m_Connector = aiohttp.TCPConnector(limit=50)
       self.m_ClientSession = aiohttp.ClientSession(connector=self.m_Connector)
-      self.m_Queue = None
+      self.m_ServerToLoopQueue : multiprocessing.Queue = None
       self.m_MapModel = CSEMapModel.CSEMapModel()
       self.m_RegionScrapeIndex = 0
       self.m_MarketModel = CSEMarketModel.CSEMarketModel()
@@ -34,18 +35,20 @@ class CSEServerLoopData:
       self.m_OrderScraperPipe = None
       self.m_OrderScrapeSent = False
       self.m_ItemModel = CSEItemModel.CSEItemModel()
+      self.m_ClientModel = CSEClientModel.CSEClientModel()
+      self.m_NextClientToUpdateIndex = 0
     
 def WriteScrape(scrape):
     # Write up to date scrape to file
     with open(CSECommon.SCRAPE_FILE_PATH, "wb") as scrape_file:
         pickle.dump(scrape, scrape_file)
 
-def Main(queue):
-  asyncio.run(CSEServerLoopMain(queue))
+def Main(server_to_loop_queue : multiprocessing.Queue):
+  asyncio.run(CSEServerLoopMain(server_to_loop_queue))
 
-async def CSEServerLoopMain(queue):
+async def CSEServerLoopMain(server_to_loop_queue : multiprocessing.Queue):
     server_data = CSEServerLoopData()
-    server_data.m_Queue = queue
+    server_data.m_ServerToLoopQueue = server_to_loop_queue
 
     # Get existing scrape from file
     CSELogging.Log("LOADING SCRAPE FROM FILE", __file__)
@@ -148,6 +151,7 @@ async def CSEServerLoopMain(queue):
     server_data.m_Scrape.m_OrdersScrape.m_Valid = True
 
     while True:
+        # Manage order scraping
         if not server_data.m_OrderScrapeSent:
             region_to_scrape = server_data.m_MapModel.GetRegionByIndex(server_data.m_RegionScrapeIndex)
             if region_to_scrape:
@@ -167,3 +171,37 @@ async def CSEServerLoopMain(queue):
                     server_data.m_RegionScrapeIndex += 1
                     WriteScrape(server_data.m_Scrape)
                     server_data.m_OrderScrapeSent = False
+
+        # Handle server message
+        if not server_data.m_ServerToLoopQueue.empty():
+            message = server_data.m_ServerToLoopQueue.get_nowait()
+            if type(message) == CSEMessages.CSEMessageNewClientAuth:
+                server_data.m_ClientModel.OnNewClientAuth(message)
+
+        # Update clients
+        client_data = server_data.m_ClientModel.GetClientByIndex(server_data.m_NextClientToUpdateIndex)
+        if client_data:
+             # Schedule next client update
+            server_data.m_NextClientToUpdateIndex = server_data.m_NextClientToUpdateIndex + 1
+
+            # Validate the access token
+            query = {'grant_type':'refresh_token', 'refresh_token':client_data.m_RefreshToken, 'client_id':CSECommon.CLIENT_ID}
+            header = {'Content-Type':'application/x-www-form-urlencoded', 'Host':'login.eveonline.com'}
+            res = requests.post(CSECommon.EVE_REFRESH_TOKEN, headers=header, data=query)
+            if res.ok:
+                json_content = json.loads(res.content)
+                client_data.m_AccessToken = json_content.get('access_token')
+                client_data.m_RefreshToken = json_content.get('refresh_token')
+            else:
+                break
+
+            # Update the location of the character
+            location_url = f'{CSECommon.EVE_SERVER_ROOT}characters/{client_data.m_CharacterId}/location/'
+            parameters = {'token' : client_data.m_AccessToken}
+            res = await CSECommon.DecodeJsonAsyncHelper(server_data.m_ClientSession, location_url, params = parameters)
+
+        else:
+            server_data.m_NextClientToUpdateIndex = 0
+                
+
+                

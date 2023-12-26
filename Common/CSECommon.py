@@ -11,6 +11,7 @@ import requests
 
 # Server Locations
 SERVER_URL = 'http://127.0.0.1:5000'
+AUTH = '/auth'
 PING = '/ping'
 MAP = '/map'
 FULL_SCRAPE = '/full_scrape/'
@@ -28,6 +29,8 @@ EVE_STARGATES = EVE_SERVER_ROOT + 'universe/stargates/'
 EVE_STATIONS = EVE_SERVER_ROOT + 'universe/stations/'
 EVE_MARKETS = EVE_SERVER_ROOT + 'markets/'
 EVE_ITEM_TYPE_IDS = EVE_SERVER_ROOT + 'universe/types/'
+EVE_VERIFY = 'https://esi.evetech.net/verify/'
+EVE_REFRESH_TOKEN = 'https://login.eveonline.com/v2/oauth/token/'
 
 # Codes
 ERROR_CODE = 404
@@ -40,6 +43,8 @@ SHOULD_AUTHORIZE = False
 TASK_LIMIT = 100
 ERROR_PRONE_TASK_LIMIT = 10 # Task count for cases where all tasks might fail so we don't get in trouble with the eve server
 ZERO_TOL = .0001
+STATE_STRING = "CSEStateString"
+CLIENT_ID = 'ba636c6aeae54c8386770bc919ef2bca'
 
 #Files
 PROJECT_ROOT_PATH = pathlib.Path(__file__).parent.parent.as_posix()
