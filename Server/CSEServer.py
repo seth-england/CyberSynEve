@@ -60,9 +60,6 @@ def Auth():
 
     return "", CSECommon.OK_CODE
 
-if CSECommon.SHOULD_AUTHORIZE:
-    webbrowser.open('https://login.eveonline.com/v2/oauth/authorize?response_type=code&redirect_uri=http://127.0.0.1:5000/auth&client_id=' + CLIENT_ID + '&scope=publicData&state=KomissarTest')
-
 server.m_ServerToLoopQueue = multiprocessing.Queue()
 server.m_LoopProcess = multiprocessing.Process(target=CSEServerLoop.Main, args=(server.m_ServerToLoopQueue,))
 server.m_LoopProcess.start()

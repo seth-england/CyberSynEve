@@ -2,25 +2,40 @@ import aiohttp
 import CSEScraper
 
 class CSEMessageBase:
-    def __init__(self, name = ""):
-        self.m_Name = name
+  def __init__(self, name = ""):
+    self.m_Name = name
 
 class CSEMessageScrapeRegionOrders(CSEMessageBase):
-    def __init__(self) -> None:
-        super().__init__()
-        self.m_RegionName = ""
-        self.m_RegionId = -1
+  def __init__(self) -> None:
+    super().__init__()
+    self.m_RegionName = ""
+    self.m_RegionId = -1
 
 class CSEMessageScrapeRegionOrdersResult(CSEMessageBase):
-    def __init__(self) -> None:
-        super().__init__()
-        self.m_Result = CSEScraper.RegionOrdersScrape()
+  def __init__(self) -> None:
+    super().__init__()
+    self.m_Result = CSEScraper.RegionOrdersScrape()
 
 class CSEMessageNewClientAuth(CSEMessageBase):
-    def __init__(self):
-        super().__init__()
-        self.m_CharacterId = 0
-        self.m_CharacterName = ""
-        self.m_AccessToken = ""
-        self.m_RefreshToken = ""
-        self.m_ExpiresDateString = ""
+  def __init__(self):
+    super().__init__()
+    self.m_CharacterId = 0
+    self.m_CharacterName = ""
+    self.m_AccessToken = ""
+    self.m_RefreshToken = ""
+    self.m_ExpiresDateString = ""
+
+class CSEMessageUpdateClient(CSEMessageBase):
+  def __init__(self):
+    self.m_CharacterId = 0
+    self.m_AccessToken = ""
+    self.m_RefreshToken = ""
+
+class CSEMessageUpdateClientResponse(CSEMessageBase):
+  def __init__(self):
+    self.m_CharacterId = 0
+    self.m_AccessToken = ""
+    self.m_RefreshToken = ""
+    self.m_SystemId = 0
+    self.m_RegionId = 0
+    self.m_ShipId = 0

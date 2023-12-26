@@ -8,12 +8,12 @@ from PyQt5.QtGui import *
 
 class CSESystemView:
     def __init__(self) -> None:
-        self.m_SystemModel = CSEMapModel.CSESystemModel()
+        self.m_SystemModel = CSEMapModel.CSESystemData()
         self.m_Width = 10
         self.m_Height = 10
         self.MapCoordinates = CSEMath.Vec2()
 
-    def Init(self, system_model : CSEMapModel.CSESystemModel):
+    def Init(self, system_model : CSEMapModel.CSESystemData):
         self.m_SystemModel = system_model
 
     def Activate(self, coordinates : CSEMath.Vec2):
