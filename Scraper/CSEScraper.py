@@ -10,6 +10,7 @@ import pickle
 import inspect
 import aiohttp
 import asyncio
+import CSELogging
 from flask import Flask, request
 from base64 import b64encode
 from json import JSONDecoder, JSONEncoder
@@ -62,9 +63,14 @@ class OrdersScape(ScrapeBase):
     super().__init__()
     self.m_RegionIdToRegionOrdersScrape = dict[int, RegionOrdersScrape]()
 
+class ItemsScrape(ScrapeBase):
+  def __init__(self) -> None:
+    super().__init__()
+    self.m_ItemIdToDict = dict[int, dict]()
+
 class ScrapeFileFormat:
   def __init__(self) -> None:
-    self.m_Version = 0
+    self.m_Version = 1
     self.m_RegionIdsScrape = RegionIdsScrape()
     self.m_RegionsScrape = RegionsScrape()
     self.m_ConstellationsScrape = ConstellationsScrape()
@@ -72,6 +78,40 @@ class ScrapeFileFormat:
     self.m_StargatesScrape = StargatesScrape()
     self.m_StationsScrape = StationsScrape()
     self.m_OrdersScrape = OrdersScape()
+    self.m_ItemsScrape = ItemsScrape()
+
+def SetScrapeFromDict(scrape : ScrapeFileFormat, dict : dict):
+  scrape_file_version = dict.get('m_Version')
+  assert scrape_file_version == scrape.m_Version
+  scrape.m_Version = scrape_file_version
+
+  def SetBaseValues(scrape : ScrapeBase, dict):
+    scrape_valid = dict.get('m_Valid')
+    assert scrape_valid is True
+    scrape.m_Valid = scrape_valid
+    scrape_version = dict.get('m_Version')
+    assert scrape.m_Version is scrape_version
+    scrape.m_Version = scrape_version
+    scrape_time = dict.get('m_Time')
+    assert scrape_time is not None
+    scrape.m_Time = scrape_time
+
+  region_ids_dict = dict.get('m_RegionIdsScrape')
+  if region_ids_dict is not None:
+    SetBaseValues(scrape.m_RegionIdsScrape, region_ids_dict)
+    ids = region_ids_dict.get('m_Ids')
+    scrape.m_RegionIdsScrape.m_Ids = ids
+  
+  regions_dict = dict.get("m_RegionsScrape")
+  if regions_dict is not None:
+    SetBaseValues(scrape.m_RegionsScrape, regions_dict)
+    region_id_to_region_dict = regions_dict.get("m_RegionIdToDict")
+    scrape.m_RegionsScrape.m_RegionIdToDict = region_id_to_region_dict
+
+  constellations_dict = dict.Get("m_ConstellationsScrape")
+  if constellations_dict is not None:
+    SetBaseValues(scrape.m_ConstellationsScrape, constellations_dict)
+    scrape.m_ConstellationIdToDict
 
 # Retrieve the region ids
 def ScrapeRegionIds() :
@@ -181,3 +221,31 @@ async def ScrapeRegionOrders(region_id, client_session : aiohttp.ClientSession) 
   region_orders_scrape.m_Valid = True
   region_orders_scrape.m_Time = time.time()
   return region_orders_scrape
+
+async def ScrapeItemTypes(client_session : aiohttp.ClientSession) -> ItemsScrape:
+  result = ItemsScrape()
+
+  # Gather all item type ids from the server
+  all_ids = []
+  got_results = True
+  page_number = 1
+  while got_results:
+    parameters = {'page' : page_number}
+    ids = await CSECommon.DecodeJsonAsyncHelper(client_session, CSECommon.EVE_ITEM_TYPE_IDS, params=parameters)
+    if ids is not None:
+      if len(ids) > 0:
+        page_number = page_number + 1
+        for id in ids:
+          all_ids.append(id)
+      else:
+        got_results = False
+    else:
+      got_results = False
+
+  id_to_dict = await ScrapeIdToDict(all_ids, client_session, CSECommon.EVE_ITEM_TYPE_IDS, 'type_id')
+  result.m_ItemIdToDict = id_to_dict
+  result.m_Valid = True
+  result.m_Time = time.time()
+  return result
+
+  return result

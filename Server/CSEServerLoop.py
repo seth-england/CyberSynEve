@@ -15,6 +15,8 @@ import CSELogging
 import CSEServerOrderScaper
 import CSEMessages
 import typing
+import pickle
+import CSEItemModel
 from flask import Flask, request
 from base64 import b64encode
 from telnetlib import NOP
@@ -31,13 +33,12 @@ class CSEServerLoopData:
       self.m_OrderScraperProcess = None
       self.m_OrderScraperPipe = None
       self.m_OrderScrapeSent = False
+      self.m_ItemModel = CSEItemModel.CSEItemModel()
     
 def WriteScrape(scrape):
     # Write up to date scrape to file
-    scrape_file = open(CSECommon.SCRAPE_FILE_PATH, "w")
-    json_string = CSECommon.GenericEncoder().encode(scrape)
-    scrape_file.write(json_string)
-    scrape_file.close()
+    with open(CSECommon.SCRAPE_FILE_PATH, "wb") as scrape_file:
+        pickle.dump(scrape, scrape_file)
 
 def Main(queue):
   asyncio.run(CSEServerLoopMain(queue))
@@ -48,14 +49,24 @@ async def CSEServerLoopMain(queue):
 
     # Get existing scrape from file
     CSELogging.Log("LOADING SCRAPE FROM FILE", __file__)
-    scrape_file = open(CSECommon.SCRAPE_FILE_PATH, "r")
     try:
-        scrape_file_dict = json.load(scrape_file)
-        CSECommon.SetObjectFromDict(server_data.m_Scrape, scrape_file_dict)
-        CSELogging.Log("LOAD FROM FILE SUCCESS", __file__)
-    except:
-        CSELogging.Log("LOAD FROM FILE FAILURE", __file__)
-    scrape_file.close()
+        with open(CSECommon.SCRAPE_FILE_PATH, "rb") as scrape_file:
+            server_data.m_Scrape = pickle.load(scrape_file)
+            if server_data.m_Scrape.m_Version != CSEScraper.ScrapeFileFormat().m_Version:
+                CSELogging.Log("LOAD FROM FILE FAILURE, NEW VERSION", __file__)
+                server_data.m_Scrape = CSEScraper.ScrapeFileFormat()
+            else:
+                CSELogging.Log("LOAD FROM FILE SUCCESS", __file__)
+    except FileNotFoundError:
+        CSELogging.Log("LOAD FROM FILE FAILURE COULD NOT OPEN FILE", __file__)
+    except EOFError:
+        CSELogging.Log("LOAD FROM FILE FAILURE REACHED UNEXPECTED END OF FILE", __file__)
+
+    if not server_data.m_Scrape.m_ItemsScrape.m_Valid:
+        CSELogging.Log("SCRAPING ITEM TYPES", __file__)
+        server_data.m_Scrape.m_ItemsScrape = await CSEScraper.ScrapeItemTypes(server_data.m_ClientSession)
+        CSELogging.Log("SCRAPED ITEM TYPES", __file__)
+        WriteScrape(server_data.m_Scrape)
 
     if not server_data.m_Scrape.m_RegionIdsScrape.m_Valid:
         CSELogging.Log("SCRAPING REGION IDS", __file__)
@@ -115,26 +126,26 @@ async def CSEServerLoopMain(queue):
       CSELogging.Log("SCRAPED STATIONS", __file__)
       WriteScrape(server_data.m_Scrape)
 
-    #server_data.m_Queue.put(server_data.m_Scrape)
-    #requests.post(CSECommon.FULL_SCRAPE_URL)
-
     # Write up to date scrape to file
     WriteScrape(server_data.m_Scrape)
     CSELogging.Log("INITIAL SCRAPE COMPLETE", __file__)
 
-    CSELogging.Log("INIT MAP MODEL", __file__)
+    CSELogging.Log("CREATE MAP MODEL", __file__)
     server_data.m_MapModel.CreateFromScrape(server_data.m_Scrape)
+
+    CSELogging.Log("CREATE ITEM MODEL", __file__)
+    server_data.m_ItemModel.CreateFromScrape(server_data.m_Scrape.m_ItemsScrape)
+
+    for region_orders_scrape in server_data.m_Scrape.m_OrdersScrape.m_RegionIdToRegionOrdersScrape.values():
+         if region_orders_scrape.m_Valid is True:
+            server_data.m_MarketModel.OnRegionOrdersScraped(region_orders_scrape)
 
     # Start scraping orders
     server_data.m_OrderScraperPipe, order_scraper_pipe_other_side = multiprocessing.Pipe()
     server_data.m_OrderScraperProcess = multiprocessing.Process(target=CSEServerOrderScaper.Main, args=(order_scraper_pipe_other_side,))
     server_data.m_OrderScraperProcess.start()
 
-    for region_orders_scrape in server_data.m_Scrape.m_OrdersScrape.m_RegionIdToRegionOrdersScrape.values():
-         if region_orders_scrape.m_Valid is True:
-            server_data.m_MarketModel.OnRegionOrdersScraped(region_orders_scrape)
-
-    server_data.m_Scrape.m_OrdersScrape.m_Valid = True    
+    server_data.m_Scrape.m_OrdersScrape.m_Valid = True
 
     while True:
         if not server_data.m_OrderScrapeSent:

@@ -6,7 +6,6 @@ import CSEScraper
 # Data for an item in a particular region
 class CSEMarketRegionItemData:
   def __init__(self):
-    self.m_Name = ""
     self.m_Id = -1
     self.m_VolumeForSale = 0
     self.m_VolumeTimesPriceSum = 0 # The numerator of the mean price

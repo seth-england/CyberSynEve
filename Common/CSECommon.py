@@ -27,6 +27,7 @@ EVE_SYSTEMS = EVE_SERVER_ROOT + 'universe/systems/'
 EVE_STARGATES = EVE_SERVER_ROOT + 'universe/stargates/'
 EVE_STATIONS = EVE_SERVER_ROOT + 'universe/stations/'
 EVE_MARKETS = EVE_SERVER_ROOT + 'markets/'
+EVE_ITEM_TYPE_IDS = EVE_SERVER_ROOT + 'universe/types/'
 
 # Codes
 ERROR_CODE = 404
