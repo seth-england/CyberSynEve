@@ -11,13 +11,10 @@ import requests
 
 # Server Locations
 SERVER_URL = 'http://127.0.0.1:5000'
-AUTH = '/auth'
-PING = '/ping'
-MAP = '/map'
-FULL_SCRAPE = '/full_scrape/'
-MAP_SCRAPE = '/map_scrape/'
-FULL_SCRAPE_URL = SERVER_URL + FULL_SCRAPE
-MAP_SCRAPE_URL = SERVER_URL + MAP_SCRAPE
+SERVER_AUTH_ENDPOINT = '/auth'
+SERVER_AUTH_URL = SERVER_URL + SERVER_AUTH_ENDPOINT
+SERVER_CHECK_LOGIN_ENDPOINT = '/checklogin'
+SERVER_CHECK_LOGIN_URL = SERVER_URL + SERVER_CHECK_LOGIN_ENDPOINT
 
 # Eve server
 import ProjectSettings
@@ -33,7 +30,7 @@ EVE_VERIFY = 'https://esi.evetech.net/verify/'
 EVE_REFRESH_TOKEN = 'https://login.eveonline.com/v2/oauth/token/'
 
 # Codes
-ERROR_CODE = 404
+NOT_FOUND_CODE = 404
 BAD_PARAMS_CODE = 400
 OK_CODE = 200
 CHILL_CODE = 420
@@ -79,7 +76,7 @@ async def DecodeJsonAsyncHelper(session : aiohttp.ClientSession, url, **args):
       break
     elif res.status == CHILL_CODE:
       raise Exception("Too many errors from the server")
-    elif res.status == ERROR_CODE:
+    elif res.status == NOT_FOUND_CODE:
       return None
     elif res.start == BAD_PARAMS_CODE:
       return None
@@ -101,7 +98,7 @@ def DecodeJsonFromURL(url, **args):
       break
     elif res.status_code == CHILL_CODE:
       raise Exception("Too many errors from the server")
-    elif res.status_code == ERROR_CODE:
+    elif res.status_code == NOT_FOUND_CODE:
       return None
     elif res.status_code == BAD_PARAMS_CODE:
       return None
@@ -123,7 +120,7 @@ def PostAndDecodeJsonFromURL(url, **args):
       break
     elif res.status_code == CHILL_CODE:
       raise Exception("Too many errors from the server")
-    elif res.status_code == ERROR_CODE:
+    elif res.status_code == NOT_FOUND_CODE:
       return None
     elif res.status_code == BAD_PARAMS_CODE:
       return None

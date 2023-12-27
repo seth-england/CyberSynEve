@@ -20,7 +20,7 @@ def Main(updater : CSEServerClientUpdaterClass):
       message = updater.m_ServerToSelfQueue.get_nowait()
       if type(message) is CSEMessages.CSEMessageUpdateClient:
         update_message : CSEMessages.CSEMessageUpdateClient = message
-        response = CSEMessages.CSEMessageUpdateClientResponse()
+        response = CSEMessages.UpdateClientResponse()
         response.m_CharacterId = update_message.m_CharacterId
         response.m_AccessToken = update_message.m_AccessToken
         response.m_RefreshToken = update_message.m_RefreshToken
