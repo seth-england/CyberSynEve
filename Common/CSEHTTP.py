@@ -10,4 +10,8 @@ class CheckLoginRequestResponse:
     self.m_CharacterName = ""
     self.m_LoggedIn = False
 
+class PingRequest:
+  def __init__(self):
+    self.m_UUID = ""
+
 

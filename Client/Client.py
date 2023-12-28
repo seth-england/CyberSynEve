@@ -8,14 +8,27 @@ import uuid
 import CSEHTTP
 import json
 import time
+import threading
 
 class CSEClient:
   def __init__(self) -> None:
-    self.m_UUID = uuid.uuid4() # ID representing a unique instance of a running client
+    self.m_UUID = str(uuid.uuid4()) # ID representing a unique instance of a running client
     self.m_LoggedIn = False
     self.m_CharacterID = 0
     self.m_CharacterName = ""
+    self.m_PingThread : threading.Thread() = None
 client = CSEClient()
+
+def PingThread():
+  while True:
+    request = CSEHTTP.PingRequest()
+    request.m_UUID = client.m_UUID
+    request_json = json.dumps(request.__dict__)
+    try: 
+      requests.get(CSECommon.SERVER_PING_URL, json=request_json)
+    except:
+      pass
+    time.sleep(CSECommon.PING_PERIOD)
 
 # Log the user in
 redirect_uri = urllib.parse.quote_plus(CSECommon.SERVER_AUTH_URL)
@@ -28,7 +41,7 @@ print("Logging you in...")
 attempts_remaning = 15
 while attempts_remaning > 0 and not client.m_LoggedIn:
   request = CSEHTTP.CheckLoginRequest()
-  request.m_UUID = str(client.m_UUID)
+  request.m_UUID = client.m_UUID
   request_json = json.dumps(request.__dict__)
   res_dict = CSECommon.DecodeJsonFromURL(CSECommon.SERVER_CHECK_LOGIN_URL, json=request_json)
   if res_dict:
@@ -54,12 +67,18 @@ if not client.m_LoggedIn:
   print("Failed to login. Make sure you're authorizing in the web browser when it pops up.")
   exit(0)
 
+# Spin up ping thread
+client.m_PingThread = threading.Thread(target=PingThread, args=())
+client.m_PingThread.start()
+
 # Main Loop
 while True:
   print("Select an option below: ")
   print("1) Find a profitable route")
+  print("2) Update my character")
   user_input = input()
   if user_input.find('1', 0, 0):
     print("Fetching from server...")
     print("DING DONG")
+
   continue

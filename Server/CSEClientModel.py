@@ -1,5 +1,7 @@
 from typing import Any
 import CSEMessages
+import CSECommon
+import json
 
 class CSEClientData:
   def __init__(self) -> None:
@@ -13,13 +15,18 @@ class CSEClientData:
     self.m_ShipID = None
     self.m_UUID = "" # A unique identifier for a client running somewhere in the world
 
-  def __reduce__(self):
-    return (CSEClientData, (), None, None, iter(self.items()))
-
-class CSEClientModel:
+class ClientModel:
   def __init__(self) -> None:
-    self.m_CharacterIdToClientData = dict[int, CSEClientData]()
+    self.m_CharacterIdToClientDataValueType = CSEClientData
+    self.m_CharacterIdToClientData = dict[int, self.m_CharacterIdToClientDataValueType]()
     return
+  
+  def ToJson(self) -> str:
+    res = json.dumps(self, cls=CSECommon.GenericEncoder)
+    return res
+  
+  def FromJson(self, json_dict):
+    CSECommon.FromJson(self, json_dict)
 
   def GetClientByIndex(self, index : int):
     # Check if key exists
@@ -65,4 +72,4 @@ class CSEClientModel:
       client_data.m_RefreshToken = message.m_RefreshToken
       client_data.m_CharacterRegionId = message.m_RegionId
       client_data.m_CharacterSystemId = message.m_SystemId
-      client_data.m_ShipId = message.m_ShipId
+      client_data.m_ShipID = message.m_ShipId

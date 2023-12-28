@@ -41,13 +41,17 @@ class RouteData:
     self.m_Version = 0
     self.m_SystemIdToSystemIdToShortestRoute = dict[int, dict[int, list[int]]]()
 
-class CSEMapModel:
+class MapModel:
   def __init__(self):
     self.m_RegionIdToRegion = dict[int, CSERegionData]()
     self.m_SystemIdToSystem = dict[int, CSESystemData]()
     self.m_ConstellationIdToConstellation = dict[int, CSEConstellationData]()
     self.m_StargateIdToStargate = dict[int, CSEStargateData]()
     self.m_RouteData = RouteData()
+
+  def GetSystemIds(self) -> list[int]:
+    system_ids = list(self.m_SystemIdToSystem.keys())
+    return system_ids
 
   def GetRegionByIndex(self, index : int) -> CSERegionData or None:
     key_list = list(self.m_RegionIdToRegion.keys())
@@ -89,6 +93,8 @@ class CSEMapModel:
         origin_dict = dict[int, list[int]]()
         self.m_RouteData.m_SystemIdToSystemIdToShortestRoute[origin_system_id] = origin_dict
       origin_dict[dest_system_id] = route
+    
+    return route
   
   def SerializeRouteData(self, dest):
     try:
@@ -106,6 +112,9 @@ class CSEMapModel:
           CSELogging.Log("FAILED TO DESERIALIZE ROUTE DATA, VERSION MISMATCH", __file__)
     except:
       CSELogging.Log("FAILED TO DESERIALIZE ROUTE DATA", __file__)
+  
+  def GetRegionById(self, region_id : int) -> CSERegionData or None:
+    return self.m_RegionIdToRegion.get(region_id)
     
   def CreateFromScrape(self, scrape : CSEScraper.ScrapeFileFormat):
     # Gather the regions

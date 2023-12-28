@@ -4,7 +4,7 @@
 import CSEScraper
 
 # Data for an item in a particular region
-class CSEMarketRegionItemData:
+class ItemData:
   def __init__(self):
     self.m_Id = -1
     self.m_VolumeForSale = 0
@@ -13,11 +13,25 @@ class CSEMarketRegionItemData:
 
 class CSEMarketRegionData:
   def __init__(self) -> None:
-    self.m_ItemIDToRegionItemData = dict()
+    self.m_ItemIDToRegionItemData = dict[int, ItemData]()
 
-class CSEMarketModel:
+class MarketModel:
   def __init__(self) -> None:
-    self.m_RegionIdToRegionData = dict()
+    self.m_RegionIdToRegionData = dict[int, CSEMarketRegionData]()
+
+  def GetItemIdsFromRegionId(self, region_id : int) -> list[int]:
+    region = self.m_RegionIdToRegionData.get(region_id)
+    if region is None:
+      return list()
+    item_ids = list(region.m_ItemIDToRegionItemData.keys())
+    return item_ids
+  
+  def GetItemDataFromRegionIdAndItemId(self, region_id : int, item_id : int) -> ItemData or None:
+    region = self.m_RegionIdToRegionData.get(region_id)
+    if region is None:
+      return None
+    item_data = region.m_ItemIDToRegionItemData.get(item_id)
+    return item_data
 
   def OnRegionOrdersScraped(self, scrape : CSEScraper.RegionOrdersScrape) -> None:
     # Clear the existing region data
@@ -29,7 +43,7 @@ class CSEMarketModel:
         item_id = order_dict["type_id"]
         item_data = region_data.m_ItemIDToRegionItemData.get(item_id)
         if not item_data:
-          item_data = CSEMarketRegionItemData()
+          item_data = ItemData()
           region_data.m_ItemIDToRegionItemData[item_id] = item_data
         item_data.m_Id = item_id
         order_volume = order_dict["volume_remain"]

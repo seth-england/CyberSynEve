@@ -23,6 +23,8 @@ import threading
 import time
 import inspect
 import queue
+import CSEServerVolatileModelStaging
+import copy
 from flask import Flask, request
 from base64 import b64encode
 from telnetlib import NOP
@@ -32,16 +34,17 @@ class CSEServer:
     self.m_Scrape = CSEScraper.ScrapeFileFormat()
     self.m_Connector : aiohttp.TCPConnector = None
     self.m_ClientSession : aiohttp.ClientSession = None
-    self.m_MapModel = CSEMapModel.CSEMapModel()
+    self.m_MapModel = CSEMapModel.MapModel()
     self.m_RegionScrapeIndex = 0
-    self.m_MarketModel = CSEMarketModel.CSEMarketModel()
+    self.m_MarketModel = CSEMarketModel.MarketModel()
     self.m_OrderScraper : CSEServerOrderScraper.OrderScraper = None
-    self.m_ItemModel = CSEItemModel.CSEItemModel()
-    self.m_ClientModel = CSEClientModel.CSEClientModel()
+    self.m_ItemModel = CSEItemModel.ItemModel()
+    self.m_ClientModel = CSEClientModel.ClientModel()
     self.m_NextClientToUpdateIndex = 0
     self.m_ClientUpdater : CSEServerClientUpdater.ClientUpdater = None
     self.m_Thread : threading.Thread = None
     self.m_LockFlask = threading.Lock()
+    self.m_ModelStaging = CSEServerVolatileModelStaging.ModelStaging()
 
   def ScheduleClientUpdate(self, character_id : int):
       client_data = self.m_ClientModel.GetClientByCharacterId(character_id)
@@ -51,6 +54,15 @@ class CSEServer:
         message.m_AccessToken = client_data.m_AccessToken
         message.m_RefreshToken = client_data.m_RefreshToken
         self.m_ClientUpdater.m_ServerToSelfQueue.put_nowait(message)
+
+  def StageModels(self, wait = True):
+    if self.m_ModelStaging.m_Lock.locked() and not wait:
+      return
+    
+    with self.m_ModelStaging.m_Lock:
+      self.m_ModelStaging.m_ClientModel = copy.deepcopy(self.m_ClientModel)
+      self.m_ModelStaging.m_MarketModel = copy.deepcopy(self.m_MarketModel)
+      self.m_ModelStaging.m_LastStageId += 1
 
 def WriteScrape(scrape):
   # Write up to date scrape to file
@@ -164,6 +176,15 @@ async def CSEServerLoopMain(server_data : CSEServer):
   except FileNotFoundError:
     CSELogging.Log("FAILED TO DESERIALIZE ROUTES FROM FILE", __file__)
 
+  # Deserialize client model
+  try:
+    with open(CSECommon.CLIENT_MODEL_FILE_PATH, "r") as client_model_file:
+      json_dict = json.load(client_model_file)
+      server_data.m_ClientModel.FromJson(json_dict)
+  except FileNotFoundError:
+    CSELogging.Log("FAILED TO DESERIALIZE CLIENT MODEL FROM FILE, FILE MISSING", __file__)   
+  except json.JSONDecodeError:
+    CSELogging.Log("FAILED TO DESERIALIZE CLIENT MODEL FROM FILE, JSON DECODE ERROR", __file__) 
 
   # Create item model
   CSELogging.Log("CREATE ITEM MODEL", __file__)
@@ -174,6 +195,9 @@ async def CSEServerLoopMain(server_data : CSEServer):
      if region_orders_scrape.m_Valid is True:
       server_data.m_MarketModel.OnRegionOrdersScraped(region_orders_scrape)
   server_data.m_Scrape.m_OrdersScrape.m_Valid = True
+
+  # Stage models for child threads
+  server_data.StageModels()
 
   # Start scraping orders
   server_data.m_OrderScraper = CSEServerOrderScraper.OrderScraper()
@@ -187,9 +211,11 @@ async def CSEServerLoopMain(server_data : CSEServer):
   server_data.m_ClientUpdater.m_ServerToSelfQueue = queue.Queue()
   server_data.m_ClientUpdater.m_SelfToServerQueue = queue.Queue()
   server_data.m_ClientUpdater.m_MapModel = server_data.m_MapModel
+  server_data.m_ClientUpdater.m_ModelStaging = server_data.m_ModelStaging
+  server_data.m_ClientUpdater.m_ItemModel = server_data.m_ItemModel
   server_data.m_ClientUpdater.m_Thread = threading.Thread(target=CSEServerClientUpdater.Main, args=(server_data.m_ClientUpdater,))
   server_data.m_ClientUpdater.m_Thread.start()
-
+  
   while True:
     # Manage order scraping
     if server_data.m_OrderScraper.m_ServerToSelfQueue.empty():
@@ -209,6 +235,7 @@ async def CSEServerLoopMain(server_data : CSEServer):
           server_data.m_MarketModel.OnRegionOrdersScraped(scrape_result.m_Result)
           server_data.m_Scrape.m_OrdersScrape.m_RegionIdToRegionOrdersScrape.update({scrape_result.m_Result.m_RegionId : scrape_result.m_Result})
           WriteScrape(server_data.m_Scrape)
+          server_data.StageModels()
         else:
           raise Exception("Unimplemented message")
     
@@ -217,12 +244,19 @@ async def CSEServerLoopMain(server_data : CSEServer):
       response = server_data.m_ClientUpdater.m_SelfToServerQueue.get_nowait()
       if type(response) == CSEMessages.UpdateClientResponse:
         server_data.m_ClientModel.HandleUpdateClientResponse(response)
+        server_data.m_ModelStaging.m_ClientModel.HandleUpdateClientResponse(response)
+        server_data.StageModels()
       else:
         raise AssertionError("Unimplemented message")
       
     # Write routes to file
     with open(CSECommon.ROUTES_FILE_PATH, "wb") as routes_file:
       server_data.m_MapModel.SerializeRouteData(routes_file)
+
+    # Write client model to file
+    with open(CSECommon.CLIENT_MODEL_FILE_PATH, "w") as client_model_file:
+      client_model_json = server_data.m_ClientModel.ToJson()
+      client_model_file.write(client_model_json)
       
     # Let http messages get processed
     server_data.m_LockFlask.release()

@@ -75,6 +75,17 @@ def CheckLogin():
       res.m_CharacterName = client.m_CharacterName
       res.m_LoggedIn = True
     return jsonify(res.__dict__), CSECommon.OK_CODE
+  
+@app.route(CSECommon.SERVER_PING_ENDPOINT)
+def Ping():
+  with server.m_LockFlask:
+    dict = json.loads(request.json)
+    http_request = CSEHTTP.PingRequest()
+    CSECommon.FromJson(http_request, dict)
+    client = server.m_ClientModel.GetClientByUUID(http_request.m_UUID)
+    if client:
+      server.ScheduleClientUpdate(client.m_CharacterId)
+    return "", CSECommon.OK_CODE
 
 
 server.m_Thread = threading.Thread(target=CSEServer.Main, args=(server,))

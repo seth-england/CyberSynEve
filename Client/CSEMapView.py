@@ -82,7 +82,7 @@ class CSEMapView(QWidget):
 
     def __init__(self):
         QWidget.__init__(self)
-        self.m_Model = CSEMapModel.CSEMapModel()
+        self.m_Model = CSEMapModel.MapModel()
         self.m_MinUniverseX = 0
         self.m_MinUniverseZ = 0
         self.m_MaxUniverseX = 0
@@ -100,7 +100,7 @@ class CSEMapView(QWidget):
         self.m_SystemViews = []
         self.m_SystemDistance = 0
 
-    def Init(self, parent, model : CSEMapModel.CSEMapModel):
+    def Init(self, parent, model : CSEMapModel.MapModel):
         self.m_Model = model
         self.m_MinUniverseX = sys.float_info.max
         self.m_MinUniverseZ = sys.float_info.max

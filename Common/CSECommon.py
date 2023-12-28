@@ -15,6 +15,8 @@ SERVER_AUTH_ENDPOINT = '/auth'
 SERVER_AUTH_URL = SERVER_URL + SERVER_AUTH_ENDPOINT
 SERVER_CHECK_LOGIN_ENDPOINT = '/checklogin'
 SERVER_CHECK_LOGIN_URL = SERVER_URL + SERVER_CHECK_LOGIN_ENDPOINT
+SERVER_PING_ENDPOINT = '/ping'
+SERVER_PING_URL = SERVER_URL + SERVER_PING_ENDPOINT
 
 # Eve server
 import ProjectSettings
@@ -45,12 +47,14 @@ STATE_STRING = "CSEStateString"
 CLIENT_ID = 'ba636c6aeae54c8386770bc919ef2bca'
 SCOPES = 'publicData esi-location.read_location.v1 esi-location.read_ship_type.v1'
 STANDARD_SLEEP = .1
+PING_PERIOD = 15
 
 #Files
 PROJECT_ROOT_PATH = pathlib.Path(__file__).parent.parent.as_posix()
 SCRAPER_PATH = PROJECT_ROOT_PATH + '/Scraper'
 SCRAPE_FILE_PATH = SCRAPER_PATH + '/CurrentScrape'
 ROUTES_FILE_PATH = PROJECT_ROOT_PATH + '/Server/Routes'
+CLIENT_MODEL_FILE_PATH = PROJECT_ROOT_PATH + '/Server/ClientModel'
 
 def SetObjectFromDict(self, dictionary):
   for key, value in dictionary.items():
@@ -151,7 +155,7 @@ def FromJsonTypedDictHelper(o : dict, json_dict : dict, dict_type):
   for key, value in json_dict.items():
     value_object = dict_type()
     FromJson(value_object, value)
-    o[key] = value_object
+    o[int(key)] = value_object
 
 def FromJson(o : object, json_dict : dict):
   for key, value in json_dict.items():
