@@ -12,7 +12,7 @@ import aiohttp
 import multiprocessing
 import CSEMarketModel
 import CSELogging
-import CSEServerOrderScaper
+import CSEServerOrderScraper
 import CSEMessages
 import typing
 import pickle
@@ -21,6 +21,8 @@ import CSEClientModel
 import CSEServerClientUpdater
 import threading
 import time
+import inspect
+import queue
 from flask import Flask, request
 from base64 import b64encode
 from telnetlib import NOP
@@ -33,15 +35,13 @@ class CSEServer:
     self.m_MapModel = CSEMapModel.CSEMapModel()
     self.m_RegionScrapeIndex = 0
     self.m_MarketModel = CSEMarketModel.CSEMarketModel()
-    self.m_OrderScraperProcess = None
-    self.m_OrderScraperPipe = None
-    self.m_OrderScrapeSent = False
+    self.m_OrderScraper : CSEServerOrderScraper.OrderScraper = None
     self.m_ItemModel = CSEItemModel.CSEItemModel()
     self.m_ClientModel = CSEClientModel.CSEClientModel()
     self.m_NextClientToUpdateIndex = 0
-    self.m_ClientUpdater : CSEServerClientUpdater.CSEServerClientUpdaterClass = None
+    self.m_ClientUpdater : CSEServerClientUpdater.ClientUpdater = None
     self.m_Thread : threading.Thread = None
-    self.m_LockFlask = multiprocessing.Lock()
+    self.m_LockFlask = threading.Lock()
 
   def ScheduleClientUpdate(self, character_id : int):
       client_data = self.m_ClientModel.GetClientByCharacterId(character_id)
@@ -54,38 +54,35 @@ class CSEServer:
 
 def WriteScrape(scrape):
   # Write up to date scrape to file
-  with open(CSECommon.SCRAPE_FILE_PATH, "wb") as scrape_file:
-    pickle.dump(scrape, scrape_file)
+  with open(CSECommon.SCRAPE_FILE_PATH, "w") as scrape_file:
+    json_string = json.dumps(scrape, cls=CSECommon.GenericEncoder)
+    scrape_file.write(json_string)
+    #json.dump(scrape, scrape_file, cls=CSECommon.GenericEncoder)
 
 def Main(server : CSEServer):
   asyncio.run(CSEServerLoopMain(server))
 
 async def CSEServerLoopMain(server_data : CSEServer):
-  server_data.m_Connector : aiohttp.TCPConnector(limit=50)
-  server_data.m_ClientSession : aiohttp.ClientSession(connector=server_data.m_Connector)
-
+  server_data.m_Connector = aiohttp.TCPConnector(limit=50)
+  server_data.m_ClientSession = aiohttp.ClientSession(connector=server_data.m_Connector)
+ 
   server_data.m_LockFlask.acquire()
 
   # Get existing scrape from file
   CSELogging.Log("LOADING SCRAPE FROM FILE", __file__)
   try:
-    with open(CSECommon.SCRAPE_FILE_PATH, "rb") as scrape_file:
-      server_data.m_Scrape = pickle.load(scrape_file)
-      if server_data.m_Scrape.m_Version != CSEScraper.ScrapeFileFormat().m_Version:
-        CSELogging.Log("LOAD FROM FILE FAILURE, NEW VERSION", __file__)
-        server_data.m_Scrape = CSEScraper.ScrapeFileFormat()
-      else:
-        CSELogging.Log("LOAD FROM FILE SUCCESS", __file__)
+    with open(CSECommon.SCRAPE_FILE_PATH, "r") as scrape_file:
+      scrape_dict = json.load(scrape_file)
+      CSECommon.FromJson(server_data.m_Scrape, scrape_dict)
+      CSELogging.Log("LOAD FROM FILE SUCCESS", __file__)
   except FileNotFoundError:
     CSELogging.Log("LOAD FROM FILE FAILURE COULD NOT OPEN FILE", __file__)
   except EOFError:
     CSELogging.Log("LOAD FROM FILE FAILURE REACHED UNEXPECTED END OF FILE", __file__)
-
-  if not server_data.m_Scrape.m_ItemsScrape.m_Valid:
-    CSELogging.Log("SCRAPING ITEM TYPES", __file__)
-    server_data.m_Scrape.m_ItemsScrape = await CSEScraper.ScrapeItemTypes(server_data.m_ClientSession)
-    CSELogging.Log("SCRAPED ITEM TYPES", __file__)
-    WriteScrape(server_data.m_Scrape)
+  except AttributeError:
+    CSELogging.Log("LOAD FROM FILE FAILURE SCRAPE DEFINITION CHANGED", __file__)
+  except json.JSONDecodeError:
+    CSELogging.Log("LOAD FROM FILE FAILURE FAILED TO READ JSON", __file__)
 
   if not server_data.m_Scrape.m_RegionIdsScrape.m_Valid:
     CSELogging.Log("SCRAPING REGION IDS", __file__)
@@ -118,6 +115,7 @@ async def CSEServerLoopMain(server_data : CSEServer):
         system_ids.append(system_id)
     server_data.m_Scrape.m_SystemsScrape = await CSEScraper.ScrapeSystems(system_ids, server_data.m_ClientSession)
     CSELogging.Log("SYSTEMS SCRAPED", __file__)
+    WriteScrape(server_data.m_Scrape)
 
   if not server_data.m_Scrape.m_StargatesScrape.m_Valid:
     CSELogging.Log("SCRAPING STARGATES", __file__)
@@ -145,13 +143,29 @@ async def CSEServerLoopMain(server_data : CSEServer):
     CSELogging.Log("SCRAPED STATIONS", __file__)
     WriteScrape(server_data.m_Scrape)
 
+  if not server_data.m_Scrape.m_ItemsScrape.m_Valid:
+    CSELogging.Log("SCRAPING ITEM TYPES", __file__)
+    server_data.m_Scrape.m_ItemsScrape = await CSEScraper.ScrapeItemTypes(server_data.m_ClientSession)
+    CSELogging.Log("SCRAPED ITEM TYPES", __file__)
+    WriteScrape(server_data.m_Scrape)
+
   # Write up to date scrape to file
   WriteScrape(server_data.m_Scrape)
   CSELogging.Log("INITIAL SCRAPE COMPLETE", __file__)
 
+  # Create map model
   CSELogging.Log("CREATE MAP MODEL", __file__)
   server_data.m_MapModel.CreateFromScrape(server_data.m_Scrape)
 
+  # Deserialize routes
+  try:
+    with open(CSECommon.ROUTES_FILE_PATH, "rb") as routes_file:
+      server_data.m_MapModel.DeserializeRouteData(routes_file)
+  except FileNotFoundError:
+    CSELogging.Log("FAILED TO DESERIALIZE ROUTES FROM FILE", __file__)
+
+
+  # Create item model
   CSELogging.Log("CREATE ITEM MODEL", __file__)
   server_data.m_ItemModel.CreateFromScrape(server_data.m_Scrape.m_ItemsScrape)
 
@@ -162,36 +176,41 @@ async def CSEServerLoopMain(server_data : CSEServer):
   server_data.m_Scrape.m_OrdersScrape.m_Valid = True
 
   # Start scraping orders
-  server_data.m_OrderScraperPipe, order_scraper_pipe_other_side = multiprocessing.Pipe()
-  server_data.m_OrderScraperProcess = multiprocessing.Process(target=CSEServerOrderScaper.Main, args=(order_scraper_pipe_other_side,))
-  server_data.m_OrderScraperProcess.start()
+  server_data.m_OrderScraper = CSEServerOrderScraper.OrderScraper()
+  server_data.m_OrderScraper.m_ServerToSelfQueue = queue.Queue()
+  server_data.m_OrderScraper.m_SelfToServerQueue = queue.Queue()
+  server_data.m_OrderScraper.m_Thread = threading.Thread(target=CSEServerOrderScraper.Main, args=(server_data.m_OrderScraper,))
+  server_data.m_OrderScraper.m_Thread.start()
 
   # Start updating clients
-  server_data.m_ClientUpdater = CSEServerClientUpdater.CSEServerClientUpdaterClass(multiprocessing.Queue(), multiprocessing.Queue(), server_data.m_MapModel)
-  server_data.m_ClientUpdater.m_Process = multiprocessing.Process(target=CSEServerClientUpdater.Main, args=(server_data.m_ClientUpdater,))
-  server_data.m_ClientUpdater.m_Process.start()
+  server_data.m_ClientUpdater = CSEServerClientUpdater.ClientUpdater()
+  server_data.m_ClientUpdater.m_ServerToSelfQueue = queue.Queue()
+  server_data.m_ClientUpdater.m_SelfToServerQueue = queue.Queue()
+  server_data.m_ClientUpdater.m_MapModel = server_data.m_MapModel
+  server_data.m_ClientUpdater.m_Thread = threading.Thread(target=CSEServerClientUpdater.Main, args=(server_data.m_ClientUpdater,))
+  server_data.m_ClientUpdater.m_Thread.start()
 
   while True:
     # Manage order scraping
-    if not server_data.m_OrderScrapeSent:
+    if server_data.m_OrderScraper.m_ServerToSelfQueue.empty():
       region_to_scrape = server_data.m_MapModel.GetRegionByIndex(server_data.m_RegionScrapeIndex)
       if region_to_scrape:
         scrape_region_orders = CSEMessages.CSEMessageScrapeRegionOrders()
         scrape_region_orders.m_RegionId = region_to_scrape.m_Id
         scrape_region_orders.m_RegionName = region_to_scrape.m_Name
-        server_data.m_OrderScraperPipe.send(scrape_region_orders)
-        server_data.m_OrderScrapeSent = True
+        server_data.m_OrderScraper.m_ServerToSelfQueue.put_nowait(scrape_region_orders)
+        server_data.m_RegionScrapeIndex += 1
       else:
         server_data.m_RegionScrapeIndex = 0
     else:
-      if server_data.m_OrderScraperPipe.poll():
-        scrape_result = server_data.m_OrderScraperPipe.recv()
+      if not server_data.m_OrderScraper.m_SelfToServerQueue.empty():
+        scrape_result = server_data.m_OrderScraper.m_SelfToServerQueue.get_nowait()
         if type(scrape_result) is CSEMessages.CSEMessageScrapeRegionOrdersResult:
           server_data.m_MarketModel.OnRegionOrdersScraped(scrape_result.m_Result)
           server_data.m_Scrape.m_OrdersScrape.m_RegionIdToRegionOrdersScrape.update({scrape_result.m_Result.m_RegionId : scrape_result.m_Result})
-          server_data.m_RegionScrapeIndex += 1
           WriteScrape(server_data.m_Scrape)
-          server_data.m_OrderScrapeSent = False
+        else:
+          raise Exception("Unimplemented message")
     
     # Recieve client updates from child
     while not server_data.m_ClientUpdater.m_SelfToServerQueue.empty():
@@ -201,8 +220,14 @@ async def CSEServerLoopMain(server_data : CSEServer):
       else:
         raise AssertionError("Unimplemented message")
       
+    # Write routes to file
+    with open(CSECommon.ROUTES_FILE_PATH, "wb") as routes_file:
+      server_data.m_MapModel.SerializeRouteData(routes_file)
+      
     # Let http messages get processed
     server_data.m_LockFlask.release()
     time.sleep(.1)
+    while server_data.m_LockFlask.locked():
+      time.sleep(.1)
     server_data.m_LockFlask.acquire()
     

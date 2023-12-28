@@ -28,6 +28,7 @@ EVE_MARKETS = EVE_SERVER_ROOT + 'markets/'
 EVE_ITEM_TYPE_IDS = EVE_SERVER_ROOT + 'universe/types/'
 EVE_VERIFY = 'https://esi.evetech.net/verify/'
 EVE_REFRESH_TOKEN = 'https://login.eveonline.com/v2/oauth/token/'
+EVE_ROUTE = EVE_SERVER_ROOT + 'route/'
 
 # Codes
 NOT_FOUND_CODE = 404
@@ -43,11 +44,13 @@ ZERO_TOL = .0001
 STATE_STRING = "CSEStateString"
 CLIENT_ID = 'ba636c6aeae54c8386770bc919ef2bca'
 SCOPES = 'publicData esi-location.read_location.v1 esi-location.read_ship_type.v1'
+STANDARD_SLEEP = .1
 
 #Files
 PROJECT_ROOT_PATH = pathlib.Path(__file__).parent.parent.as_posix()
 SCRAPER_PATH = PROJECT_ROOT_PATH + '/Scraper'
 SCRAPE_FILE_PATH = SCRAPER_PATH + '/CurrentScrape'
+ROUTES_FILE_PATH = PROJECT_ROOT_PATH + '/Server/Routes'
 
 def SetObjectFromDict(self, dictionary):
   for key, value in dictionary.items():
@@ -143,5 +146,41 @@ class GenericEncoder(JSONEncoder):
           result_dict[member_name] = value
       return result_dict
     return json.JSONEncoder.default(self, obj)
+  
+def FromJsonTypedDictHelper(o : dict, json_dict : dict, dict_type):
+  for key, value in json_dict.items():
+    value_object = dict_type()
+    FromJson(value_object, value)
+    o[key] = value_object
+
+def FromJson(o : object, json_dict : dict):
+  for key, value in json_dict.items():
+    attr = None 
+    try:
+      attr = o.__getattribute__(key)
+    except:
+      pass
+    if attr is not None:
+      value_type = type(value)
+      attr_type = type(attr)
+      if value_type is dict:
+        # The member is a dict
+        if attr_type is dict:
+          # Check that it doesn't have a special value type
+          type_key = key + 'ValueType'
+          type_value = None
+          try:
+            type_value = o.__getattribute__(type_key)
+          except:
+            pass
+          if type_value:
+            FromJsonTypedDictHelper(attr, value, type_value)
+          else:
+            for key, value in value.items():
+              attr[int(key)] = value
+        else:
+          FromJson(attr, value)
+      else:
+        o.__setattr__(key, value)
 
 sys.path.append(SCRAPER_PATH)

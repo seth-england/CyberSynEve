@@ -11,6 +11,9 @@ import inspect
 import aiohttp
 import asyncio
 import CSELogging
+import typing
+import mypy
+
 from flask import Flask, request
 from base64 import b64encode
 from json import JSONDecoder, JSONEncoder
@@ -58,10 +61,11 @@ class RegionOrdersScrape(ScrapeBase):
     self.m_Orders = []
     self.m_RegionId = 0
 
-class OrdersScape(ScrapeBase):
+class OrdersScrape(ScrapeBase):
   def __init__(self) -> None:
     super().__init__()
-    self.m_RegionIdToRegionOrdersScrape = dict[int, RegionOrdersScrape]()
+    self.m_RegionIdToRegionOrdersScrapeValueType = RegionOrdersScrape
+    self.m_RegionIdToRegionOrdersScrape : dict[int, self.m_RegionIdToRegionOrdersScrapeValueType] = dict()
 
 class ItemsScrape(ScrapeBase):
   def __init__(self) -> None:
@@ -70,14 +74,14 @@ class ItemsScrape(ScrapeBase):
 
 class ScrapeFileFormat:
   def __init__(self) -> None:
-    self.m_Version = 1
+    self.m_Version = 4
     self.m_RegionIdsScrape = RegionIdsScrape()
     self.m_RegionsScrape = RegionsScrape()
     self.m_ConstellationsScrape = ConstellationsScrape()
     self.m_SystemsScrape = SystemsScrape()
     self.m_StargatesScrape = StargatesScrape()
     self.m_StationsScrape = StationsScrape()
-    self.m_OrdersScrape = OrdersScape()
+    self.m_OrdersScrape = OrdersScrape()
     self.m_ItemsScrape = ItemsScrape()
 
 def SetScrapeFromDict(scrape : ScrapeFileFormat, dict : dict):
@@ -224,7 +228,6 @@ async def ScrapeRegionOrders(region_id, client_session : aiohttp.ClientSession) 
 
 async def ScrapeItemTypes(client_session : aiohttp.ClientSession) -> ItemsScrape:
   result = ItemsScrape()
-
   # Gather all item type ids from the server
   all_ids = []
   got_results = True
@@ -246,6 +249,4 @@ async def ScrapeItemTypes(client_session : aiohttp.ClientSession) -> ItemsScrape
   result.m_ItemIdToDict = id_to_dict
   result.m_Valid = True
   result.m_Time = time.time()
-  return result
-
   return result

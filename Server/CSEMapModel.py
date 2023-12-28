@@ -4,6 +4,9 @@ from ctypes import Array
 import CSECommon
 import CSEScraper
 import copy
+import requests
+import pickle
+import CSELogging
 from telnetlib import NOP
 
 class CSERegionData:
@@ -32,12 +35,19 @@ class CSEStargateData:
     self.m_DestSystemId = 0
     self.m_Id = 0
 
+class RouteData:
+  def __init__(self) -> None:
+    # Route is a list of system ids
+    self.m_Version = 0
+    self.m_SystemIdToSystemIdToShortestRoute = dict[int, dict[int, list[int]]]()
+
 class CSEMapModel:
   def __init__(self):
     self.m_RegionIdToRegion = dict[int, CSERegionData]()
     self.m_SystemIdToSystem = dict[int, CSESystemData]()
     self.m_ConstellationIdToConstellation = dict[int, CSEConstellationData]()
     self.m_StargateIdToStargate = dict[int, CSEStargateData]()
+    self.m_RouteData = RouteData()
 
   def GetRegionByIndex(self, index : int) -> CSERegionData or None:
     key_list = list(self.m_RegionIdToRegion.keys())
@@ -58,6 +68,44 @@ class CSEMapModel:
       
   def GetSystemById(self, system_id) -> CSESystemData | None:
     return self.m_SystemIdToSystem.get(system_id)
+  
+  # Returns a list of system ids
+  def GetRouteData(self, origin_system_id, dest_system_id) -> list[int] or None:
+    # Look at already cached routes
+    origin_dict = self.m_RouteData.m_SystemIdToSystemIdToShortestRoute.get(origin_system_id)
+    if origin_dict:
+      route = origin_dict.get(dest_system_id)
+      if route:
+        return route
+    
+    # Pull from eve servers
+    url = CSECommon.EVE_ROUTE + str(origin_system_id) + '/' + str(dest_system_id) + '/'
+    parameters = { 'destination': dest_system_id, 'flag': 'shortest', 'origin': origin_system_id }
+    route = CSECommon.DecodeJsonFromURL(url, params=parameters)
+
+    # Cache the route if we found it
+    if route:
+      if not origin_dict:
+        origin_dict = dict[int, list[int]]()
+        self.m_RouteData.m_SystemIdToSystemIdToShortestRoute[origin_system_id] = origin_dict
+      origin_dict[dest_system_id] = route
+  
+  def SerializeRouteData(self, dest):
+    try:
+      pickle.dump(self.m_RouteData, dest)
+    except:
+      CSELogging.Log("FAILED TO SERIALIZE ROUTE DATA", __file__)
+
+  def DeserializeRouteData(self, source):
+    try:
+      route_data = pickle.load(source)
+      if route_data:
+        if route_data.m_Version == self.m_RouteData.m_Version:
+          self.m_RouteData = route_data
+        else:
+          CSELogging.Log("FAILED TO DESERIALIZE ROUTE DATA, VERSION MISMATCH", __file__)
+    except:
+      CSELogging.Log("FAILED TO DESERIALIZE ROUTE DATA", __file__)
     
   def CreateFromScrape(self, scrape : CSEScraper.ScrapeFileFormat):
     # Gather the regions

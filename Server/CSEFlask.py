@@ -77,8 +77,6 @@ def CheckLogin():
     return jsonify(res.__dict__), CSECommon.OK_CODE
 
 
-server.m_QueueFlaskToServer = multiprocessing.Queue()
-server.m_QueueServerToFlask = multiprocessing.Queue()
 server.m_Thread = threading.Thread(target=CSEServer.Main, args=(server,))
 server.m_Thread.start()
 print("CSEServer STARTED SERVER LOOP")

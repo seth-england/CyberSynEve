@@ -49,6 +49,7 @@ while attempts_remaning > 0 and not client.m_LoggedIn:
     attempts_remaning = max(0, attempts_remaning - 1)
     time.sleep(1)
 
+# Handle login failure
 if not client.m_LoggedIn:
   print("Failed to login. Make sure you're authorizing in the web browser when it pops up.")
   exit(0)

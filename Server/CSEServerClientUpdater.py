@@ -4,17 +4,18 @@ import requests
 import CSEMessages
 import multiprocessing
 import CSECommon
-import json
+import queue
+import threading
 import CSEMapModel
 
-class CSEServerClientUpdaterClass:
-  def __init__(self, server_to_self_queue : multiprocessing.Queue, self_to_server_queue : multiprocessing.Queue, map_model : CSEMapModel.CSEMapModel) -> None:
-    self.m_ServerToSelfQueue = server_to_self_queue
-    self.m_SelfToServerQueue = self_to_server_queue
-    self.m_MapModel = map_model
-    self.m_Process : multiprocessing.Process = None
+class ClientUpdater:
+  def __init__(self) -> None:
+    self.m_ServerToSelfQueue : queue.Queue() = None
+    self.m_SelfToServerQueue : queue.Queue() = None
+    self.m_MapModel : CSEMapModel = None
+    self.Thread : threading.Thread = None
 
-def Main(updater : CSEServerClientUpdaterClass):
+def Main(updater : ClientUpdater):
   while True:
     if not updater.m_ServerToSelfQueue.empty():
       message = updater.m_ServerToSelfQueue.get_nowait()
