@@ -1,3 +1,5 @@
+import CSEMessages
+
 class CheckLoginRequest:
   def __init__(self):
     self.m_UUID = ""
@@ -13,5 +15,14 @@ class CheckLoginRequestResponse:
 class PingRequest:
   def __init__(self):
     self.m_UUID = ""
+
+class GetProfitableRoute:
+  def __init__(self):
+    self.m_UUID = ""
+  
+class GetProfitableRouteResponse:
+  def __init__(self):
+    self.m_UUID = ""
+    self.m_Route = CSEMessages.ProfitableRoute() 
 
 

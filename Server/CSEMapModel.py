@@ -7,6 +7,7 @@ import copy
 import requests
 import pickle
 import CSELogging
+import CSEFileSystem
 from telnetlib import NOP
 
 class CSERegionData:
@@ -38,7 +39,6 @@ class CSEStargateData:
 class RouteData:
   def __init__(self) -> None:
     # Route is a list of system ids
-    self.m_Version = 0
     self.m_SystemIdToSystemIdToShortestRoute = dict[int, dict[int, list[int]]]()
 
 class MapModel:
@@ -96,22 +96,11 @@ class MapModel:
     
     return route
   
-  def SerializeRouteData(self, dest):
-    try:
-      pickle.dump(self.m_RouteData, dest)
-    except:
-      CSELogging.Log("FAILED TO SERIALIZE ROUTE DATA", __file__)
+  def SerializeRouteData(self, file_path : str):
+    CSEFileSystem.WriteObjectJsonToFilePath(file_path, self.m_RouteData)
 
-  def DeserializeRouteData(self, source):
-    try:
-      route_data = pickle.load(source)
-      if route_data:
-        if route_data.m_Version == self.m_RouteData.m_Version:
-          self.m_RouteData = route_data
-        else:
-          CSELogging.Log("FAILED TO DESERIALIZE ROUTE DATA, VERSION MISMATCH", __file__)
-    except:
-      CSELogging.Log("FAILED TO DESERIALIZE ROUTE DATA", __file__)
+  def DeserializeRouteData(self, file_path : str):
+    CSEFileSystem.ReadObjectFromFileJson(file_path, self.m_RouteData)
   
   def GetRegionById(self, region_id : int) -> CSERegionData or None:
     return self.m_RegionIdToRegion.get(region_id)

@@ -14,6 +14,7 @@ import CSELogging
 import CSEMessages
 import CSEHTTP
 import threading
+import signal
 from flask import Flask, request, jsonify
 from base64 import b64encode
 from telnetlib import NOP
@@ -86,7 +87,22 @@ def Ping():
     if client:
       server.ScheduleClientUpdate(client.m_CharacterId)
     return "", CSECommon.OK_CODE
-
+  
+@app.route(CSECommon.SERVER_PROFITABLE_ENDPOINT)
+def Profitable():
+  with server.m_LockFlask:
+    dict = json.loads(request.json)
+    http_request = CSEHTTP.GetProfitableRoute()
+    CSECommon.FromJson(http_request, dict)
+    client = server.m_ClientModel.GetClientByUUID(http_request.m_UUID)
+    if client:
+      res = CSEHTTP.GetProfitableRouteResponse()
+      res.m_UUID = http_request.m_UUID
+      res.m_Route = client.m_ProfitableRoute
+      res_json = CSECommon.ObjectToJsonDict(res)
+      server.ScheduleClientUpdate(client.m_CharacterId)
+      return jsonify(res_json), CSECommon.OK_CODE
+    return "", CSECommon.NOT_FOUND_CODE
 
 server.m_Thread = threading.Thread(target=CSEServer.Main, args=(server,))
 server.m_Thread.start()

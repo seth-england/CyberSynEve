@@ -2,22 +2,26 @@
 # - Price
 # - Volume
 import CSEScraper
+import CSECommon
+from datetime import datetime, timedelta
 
 # Data for an item in a particular region
 class ItemData:
   def __init__(self):
-    self.m_Id = -1
-    self.m_VolumeForSale = 0
-    self.m_VolumeTimesPriceSum = 0 # The numerator of the mean price
-    self.m_MeanPrice = 0
+    self.m_ItemId = -1
+    self.m_RecentVolume = 0
+    self.m_RecentAveragePrice = 0
+    self.m_RecentOrderCount = 0
 
 class CSEMarketRegionData:
   def __init__(self) -> None:
+    self.m_ItemIDToRegionItemDataValueType = ItemData
     self.m_ItemIDToRegionItemData = dict[int, ItemData]()
 
 class MarketModel:
   def __init__(self) -> None:
-    self.m_RegionIdToRegionData = dict[int, CSEMarketRegionData]()
+    self.m_RegionIdToRegionDataValueType = CSEMarketRegionData
+    self.m_RegionIdToRegionData = dict[int, self.m_RegionIdToRegionDataValueType]()
 
   def GetItemIdsFromRegionId(self, region_id : int) -> list[int]:
     region = self.m_RegionIdToRegionData.get(region_id)
@@ -34,22 +38,42 @@ class MarketModel:
     return item_data
 
   def OnRegionOrdersScraped(self, scrape : CSEScraper.RegionOrdersScrape) -> None:
+    recent_time_delta = timedelta(days=5)
+
     # Clear the existing region data
     region_data = CSEMarketRegionData()
     self.m_RegionIdToRegionData.update({scrape.m_RegionId : region_data})
-    for order_dict in scrape.m_Orders:
-      is_sell_order = not order_dict["is_buy_order"]
-      if is_sell_order:
-        item_id = order_dict["type_id"]
-        item_data = region_data.m_ItemIDToRegionItemData.get(item_id)
-        if not item_data:
-          item_data = ItemData()
-          region_data.m_ItemIDToRegionItemData[item_id] = item_data
-        item_data.m_Id = item_id
-        order_volume = order_dict["volume_remain"]
-        order_price = order_dict["price"]
-        item_data.m_VolumeForSale = item_data.m_VolumeForSale + order_volume
-        item_data.m_VolumeTimesPriceSum = item_data.m_VolumeTimesPriceSum + (order_price * order_volume)
-        if item_data.m_VolumeForSale > 0:
-          item_data.m_MeanPrice = item_data.m_VolumeTimesPriceSum / item_data.m_VolumeForSale   
+    for item_id, order_dict_array in scrape.m_ItemIdToHistoryDictArray.items():
+      item_data = ItemData()
+      item_data.m_ItemId = item_id
+      region_data.m_ItemIDToRegionItemData[item_id] = item_data
+
+      # Figure out which dicts are recent
+      recent_order_dicts = list[dict]()
+      for order_dict in order_dict_array:
+        order_date = order_dict.get('date')
+        if order_date is None:
+          continue
+        order_date_obj = datetime.strptime(order_date, "%Y-%m-%d").date()
+        diff = datetime.today().date() - order_date_obj
+        if diff < recent_time_delta:
+          recent_order_dicts.append(order_dict)
+
+      # Calulate total volume from recent orders
+      for recent_order_dict in recent_order_dicts:
+        volume = recent_order_dict.get('volume')
+        if volume:
+          item_data.m_RecentVolume += volume
+        order_count = recent_order_dict.get('order_count')
+        if order_count:
+          item_data.m_RecentOrderCount += order_count
+      
+      for recent_order_dict in recent_order_dicts:
+        average = recent_order_dict.get('average')
+        volume = recent_order_dict.get('volume')
+        if average > CSECommon.ZERO_TOL and volume > CSECommon.ZERO_TOL and item_data.m_RecentVolume > 0:
+          weight = volume / item_data.m_RecentVolume
+          item_data.m_RecentAveragePrice = item_data.m_RecentAveragePrice + weight * average
+        
+
   

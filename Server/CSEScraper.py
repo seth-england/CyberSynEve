@@ -58,7 +58,7 @@ class StationsScrape(ScrapeBase):
 class RegionOrdersScrape(ScrapeBase):
   def __init__(self) -> None:
     super().__init__()
-    self.m_Orders = []
+    self.m_ItemIdToHistoryDictArray = dict[int, list[dict]]()
     self.m_RegionId = 0
 
 class OrdersScrape(ScrapeBase):
@@ -81,7 +81,6 @@ class ScrapeFileFormat:
     self.m_SystemsScrape = SystemsScrape()
     self.m_StargatesScrape = StargatesScrape()
     self.m_StationsScrape = StationsScrape()
-    self.m_OrdersScrape = OrdersScrape()
     self.m_ItemsScrape = ItemsScrape()
 
 def SetScrapeFromDict(scrape : ScrapeFileFormat, dict : dict):
@@ -208,10 +207,12 @@ async def ScrapeStations(station_ids, client_session : aiohttp.ClientSession) ->
 async def ScrapeRegionOrders(region_id, client_session : aiohttp.ClientSession) -> RegionOrdersScrape:
   region_orders_scrape = RegionOrdersScrape()
   region_orders_scrape.m_RegionId = region_id
-  orders = region_orders_scrape.m_Orders
+
+  # Generate a list of type ids on the market
   search_path = CSECommon.EVE_MARKETS + str(region_id) + '/' + 'orders/'
   blank_page = False
   page_number = 1
+  unique_type_ids = {}
   while not blank_page:
     parameters = {'page' : str(page_number), 'order_type' : 'all'}
     result = await CSECommon.DecodeJsonAsyncHelper(client_session, search_path, params = parameters)
@@ -220,8 +221,36 @@ async def ScrapeRegionOrders(region_id, client_session : aiohttp.ClientSession) 
       break
     else:
       for dict in result:
-        orders.append(dict)
+        type_id = dict.get('type_id')
+        if type_id:
+          unique_type_ids[int(type_id)] = True
     page_number = page_number + 1
+
+  # Get the history data of the type ids on the market
+  search_path = CSECommon.EVE_MARKETS + str(region_id) + '/' + 'history/'
+  tasks = []
+  task_type_ids = []
+  for i, type_id in enumerate(list(unique_type_ids.keys())):
+    parameters = {'region_id' : region_id, 'type_id' : type_id}
+    task_type_ids.append(type_id)
+    tasks.append(asyncio.ensure_future(CSECommon.DecodeJsonAsyncHelper(client_session, search_path, params=parameters)))
+    if len(tasks) > CSECommon.TASK_LIMIT:
+      finished_dicts = await asyncio.gather(*tasks)
+      for j, dict in enumerate(finished_dicts):
+        if not dict is None:
+          task_type_id = task_type_ids[j]
+          region_orders_scrape.m_ItemIdToHistoryDictArray[task_type_id] = dict
+      tasks.clear()
+      task_type_ids.clear()
+  if len(tasks) > 0:
+    finished_dicts = await asyncio.gather(*tasks)
+    for j, dict in enumerate(finished_dicts):
+      if not dict is None:
+        task_type_id = task_type_ids[j]
+        region_orders_scrape.m_ItemIdToHistoryDictArray[task_type_id] = dict
+    tasks.clear()
+    task_type_ids.clear()
+
   region_orders_scrape.m_Valid = True
   region_orders_scrape.m_Time = time.time()
   return region_orders_scrape

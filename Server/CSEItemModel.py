@@ -17,6 +17,9 @@ class ItemModel:
   def GetItemDataFromID(self, item_id : int) -> CSEItemModelItemData or None:
     item = self.m_ItemIdToItemData.get(item_id)
     return item
+  
+  def GetAllItemIds(self) -> list[int]:
+    return list(self.m_ItemIdToItemData.keys())
 
   def CreateFromScrape(self, scrape: CSEScraper.ItemsScrape) -> None:
     for item_id, item_dict in scrape.m_ItemIdToDict.items():

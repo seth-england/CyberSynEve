@@ -17,6 +17,8 @@ SERVER_CHECK_LOGIN_ENDPOINT = '/checklogin'
 SERVER_CHECK_LOGIN_URL = SERVER_URL + SERVER_CHECK_LOGIN_ENDPOINT
 SERVER_PING_ENDPOINT = '/ping'
 SERVER_PING_URL = SERVER_URL + SERVER_PING_ENDPOINT
+SERVER_PROFITABLE_ENDPOINT = '/profitable'
+SERVER_PROFITABLE_URL = SERVER_URL + SERVER_PROFITABLE_ENDPOINT
 
 # Eve server
 import ProjectSettings
@@ -51,10 +53,13 @@ PING_PERIOD = 15
 
 #Files
 PROJECT_ROOT_PATH = pathlib.Path(__file__).parent.parent.as_posix()
-SCRAPER_PATH = PROJECT_ROOT_PATH + '/Scraper'
-SCRAPE_FILE_PATH = SCRAPER_PATH + '/CurrentScrape'
-ROUTES_FILE_PATH = PROJECT_ROOT_PATH + '/Server/Routes'
-CLIENT_MODEL_FILE_PATH = PROJECT_ROOT_PATH + '/Server/ClientModel'
+SERIALIZED_FILE_EXT = '.cse'
+SCRAPE_FILE_PATH = PROJECT_ROOT_PATH + '/Server/Scrape' + SERIALIZED_FILE_EXT
+ROUTES_FILE_PATH = PROJECT_ROOT_PATH + '/Server/Routes' + SERIALIZED_FILE_EXT
+CLIENT_MODEL_FILE_PATH = PROJECT_ROOT_PATH + '/Server/ClientModel' + SERIALIZED_FILE_EXT
+MARKET_MODEL_FILE_PATH = PROJECT_ROOT_PATH + '/Server/MarketModel' + SERIALIZED_FILE_EXT
+REGION_MARKET_SCRAPES_DIR = PROJECT_ROOT_PATH + '/Server/Scrapes/RegionMarkets/'
+BACKUP_FILE_SUFFIX = 'BACK'
 
 def SetObjectFromDict(self, dictionary):
   for key, value in dictionary.items():
@@ -77,7 +82,10 @@ async def DecodeJsonAsyncHelper(session : aiohttp.ClientSession, url, **args):
   good_res = None
   while attempts < 3:
     await asyncio.sleep(random.uniform(.01, 1))
-    res = await session.get(url, **args)
+    try: 
+      res = await session.get(url, **args)
+    except:
+      return None
     if res.ok:
       good_res = res
       break
@@ -99,7 +107,10 @@ def DecodeJsonFromURL(url, **args):
   good_res = None
   while attempts < 3:
     time.sleep(random.uniform(.01, 1))
-    res = requests.get(url, **args)
+    try:
+      res = requests.get(url, **args)
+    except:
+      return None
     if res.ok:
       good_res = res
       break
@@ -121,7 +132,10 @@ def PostAndDecodeJsonFromURL(url, **args):
   good_res = None
   while attempts < 3:
     time.sleep(random.uniform(.01, 1))
-    res = requests.post(url, **args)
+    try:
+      res = requests.post(url, **args)
+    except:
+      return None
     if res.ok:
       good_res = res
       break
@@ -151,11 +165,52 @@ class GenericEncoder(JSONEncoder):
       return result_dict
     return json.JSONEncoder.default(self, obj)
   
+def ObjectToJsonDict(o:object):
+  json_string = json.dumps(o, cls=GenericEncoder)
+  json_dict = json.loads(json_string)
+  return json_dict
+  
 def FromJsonTypedDictHelper(o : dict, json_dict : dict, dict_type):
   for key, value in json_dict.items():
     value_object = dict_type()
     FromJson(value_object, value)
     o[int(key)] = value_object
+
+def FromJsonListHelper(o : list, json_list : list):
+  for value in json_list:
+    if type(value) is dict:
+      new_dict = dict()
+      FromJsonDictHelper(new_dict, value)
+      o.append(new_dict)
+    elif type(value) is list:
+      new_list = list()
+      FromJsonListHelper(new_list, value)
+      o.append(new_list)
+    else:
+      o.append(value)    
+  
+
+def FromJsonDictHelper(o : dict, json_dict : dict):
+  for key, value in json_dict.items():
+    if type(value) is dict:
+      new_dict = dict()
+      FromJsonDictHelper(new_dict, value)
+      if key.isnumeric():
+        o[int(key)] = new_dict
+      else:
+        o[key] = new_dict
+    elif type(value) is list:
+      new_list = list()
+      FromJsonListHelper(new_list, value)
+      if key.isnumeric():
+        o[int(key)] = new_list
+      else:
+        o[key] = new_list
+    else:
+      if key.isnumeric():
+        o[int(key)] = value
+      else:
+        o[key] = value      
 
 def FromJson(o : object, json_dict : dict):
   for key, value in json_dict.items():
@@ -180,11 +235,8 @@ def FromJson(o : object, json_dict : dict):
           if type_value:
             FromJsonTypedDictHelper(attr, value, type_value)
           else:
-            for key, value in value.items():
-              attr[int(key)] = value
+            FromJsonDictHelper(attr, value)
         else:
           FromJson(attr, value)
       else:
         o.__setattr__(key, value)
-
-sys.path.append(SCRAPER_PATH)

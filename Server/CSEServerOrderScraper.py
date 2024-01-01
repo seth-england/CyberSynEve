@@ -31,6 +31,7 @@ class OrderScraper:
           CSELogging.Log(f'SCRAPING ORDERS FROM REGION {self.m_ScrapeMessage.m_RegionName}', __file__)
           result = CSEMessages.CSEMessageScrapeRegionOrdersResult()
           result.m_Result = await CSEScraper.ScrapeRegionOrders(self.m_ScrapeMessage.m_RegionId, client_session)
+          result.m_RegionName = message.m_RegionName
           CSELogging.Log(f'SCRAPED ORDERS FROM REGION {self.m_ScrapeMessage.m_RegionName}', __file__)
           self.m_SelfToServerQueue.put_nowait(result)
         else:

@@ -14,6 +14,7 @@ class CSEClientData:
     self.m_CharacterRegionId = None
     self.m_ShipID = None
     self.m_UUID = "" # A unique identifier for a client running somewhere in the world
+    self.m_ProfitableRoute = CSEMessages.ProfitableRoute()
 
 class ClientModel:
   def __init__(self) -> None:
@@ -73,3 +74,8 @@ class ClientModel:
       client_data.m_CharacterRegionId = message.m_RegionId
       client_data.m_CharacterSystemId = message.m_SystemId
       client_data.m_ShipID = message.m_ShipId
+      if client_data.m_ProfitableRoute.m_Valid:
+        if message.m_ProfitableRoute.m_Valid:
+          client_data.m_ProfitableRoute = message.m_ProfitableRoute
+      else:
+        client_data.m_ProfitableRoute = message.m_ProfitableRoute

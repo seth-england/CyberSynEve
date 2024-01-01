@@ -100,7 +100,7 @@ class ClientUpdater:
       start_region_item_market_data = self.m_MarketModel.GetItemDataFromRegionIdAndItemId(start_region_id, item_id)
       if start_region_item_market_data is None:
         continue
-      if start_region_item_market_data.m_VolumeForSale < MIN_ORDER_VOLUME:
+      if start_region_item_market_data.m_RecentVolume < MIN_ORDER_VOLUME:
         continue
       item_data = self.m_ItemModel.GetItemDataFromID(item_id)
       if item_data is None:
@@ -108,14 +108,14 @@ class ClientUpdater:
       end_region_item_market_data = self.m_MarketModel.GetItemDataFromRegionIdAndItemId(end_region_id, item_id)
       if end_region_item_market_data is None:
         continue
-      if end_region_item_market_data.m_VolumeForSale < MIN_ORDER_VOLUME:
+      if end_region_item_market_data.m_RecentVolume < MIN_ORDER_VOLUME:
         continue
       item_volume = item_data.m_Volume
       if item_volume > ship_capacity:
         continue
-      item_count = min(min(int(ship_capacity / item_volume), start_region_item_market_data.m_VolumeForSale),end_region_item_market_data.m_VolumeForSale)
-      investment = start_region_item_market_data.m_MeanPrice * item_count
-      profit = end_region_item_market_data.m_MeanPrice * item_count - investment
+      item_count = min(min(int(ship_capacity / item_volume), start_region_item_market_data.m_RecentVolume),end_region_item_market_data.m_RecentVolume)
+      investment = start_region_item_market_data.m_RecentAveragePrice * item_count
+      profit = end_region_item_market_data.m_RecentAveragePrice * item_count - investment
       rate_of_profit = profit / investment
       if profit > best_item_profit:
         best_item_name = item_data.m_Name
@@ -123,8 +123,8 @@ class ClientUpdater:
         best_item_investment = investment
         best_item_rate_of_profit = rate_of_profit
         best_item_count = item_count
-        best_item_start_mean_price = start_region_item_market_data.m_MeanPrice
-        best_item_end_mean_price = end_region_item_market_data.m_MeanPrice
+        best_item_start_mean_price = start_region_item_market_data.m_RecentAveragePrice
+        best_item_end_mean_price = end_region_item_market_data.m_RecentAveragePrice
       
     if best_item_name is None:
       result.m_Error = "Could not find a profitable item"
@@ -188,7 +188,7 @@ def Main(updater : ClientUpdater):
         # Update local client model with latest data
         updater.m_ClientModel.HandleUpdateClientResponse(response)
 
-        updater.CalculateProfitableRoute(response.m_CharacterId)
+        response.m_ProfitableRoute = updater.CalculateProfitableRoute(response.m_CharacterId)
         updater.m_SelfToServerQueue.put_nowait(response)
     else:
       time.sleep(CSECommon.STANDARD_SLEEP)

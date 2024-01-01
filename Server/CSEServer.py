@@ -25,6 +25,8 @@ import inspect
 import queue
 import CSEServerVolatileModelStaging
 import copy
+import CSEFileSystem
+import os
 from flask import Flask, request
 from base64 import b64encode
 from telnetlib import NOP
@@ -66,10 +68,7 @@ class CSEServer:
 
 def WriteScrape(scrape):
   # Write up to date scrape to file
-  with open(CSECommon.SCRAPE_FILE_PATH, "w") as scrape_file:
-    json_string = json.dumps(scrape, cls=CSECommon.GenericEncoder)
-    scrape_file.write(json_string)
-    #json.dump(scrape, scrape_file, cls=CSECommon.GenericEncoder)
+  CSEFileSystem.WriteObjectJsonToFilePath(CSECommon.SCRAPE_FILE_PATH, scrape)
 
 def Main(server : CSEServer):
   asyncio.run(CSEServerLoopMain(server))
@@ -82,19 +81,8 @@ async def CSEServerLoopMain(server_data : CSEServer):
 
   # Get existing scrape from file
   CSELogging.Log("LOADING SCRAPE FROM FILE", __file__)
-  try:
-    with open(CSECommon.SCRAPE_FILE_PATH, "r") as scrape_file:
-      scrape_dict = json.load(scrape_file)
-      CSECommon.FromJson(server_data.m_Scrape, scrape_dict)
-      CSELogging.Log("LOAD FROM FILE SUCCESS", __file__)
-  except FileNotFoundError:
-    CSELogging.Log("LOAD FROM FILE FAILURE COULD NOT OPEN FILE", __file__)
-  except EOFError:
-    CSELogging.Log("LOAD FROM FILE FAILURE REACHED UNEXPECTED END OF FILE", __file__)
-  except AttributeError:
-    CSELogging.Log("LOAD FROM FILE FAILURE SCRAPE DEFINITION CHANGED", __file__)
-  except json.JSONDecodeError:
-    CSELogging.Log("LOAD FROM FILE FAILURE FAILED TO READ JSON", __file__)
+
+  CSEFileSystem.ReadObjectFromFileJson(CSECommon.SCRAPE_FILE_PATH, server_data.m_Scrape)
 
   if not server_data.m_Scrape.m_RegionIdsScrape.m_Valid:
     CSELogging.Log("SCRAPING REGION IDS", __file__)
@@ -170,32 +158,18 @@ async def CSEServerLoopMain(server_data : CSEServer):
   server_data.m_MapModel.CreateFromScrape(server_data.m_Scrape)
 
   # Deserialize routes
-  try:
-    with open(CSECommon.ROUTES_FILE_PATH, "rb") as routes_file:
-      server_data.m_MapModel.DeserializeRouteData(routes_file)
-  except FileNotFoundError:
-    CSELogging.Log("FAILED TO DESERIALIZE ROUTES FROM FILE", __file__)
+  server_data.m_MapModel.DeserializeRouteData(CSECommon.ROUTES_FILE_PATH)
 
   # Deserialize client model
-  try:
-    with open(CSECommon.CLIENT_MODEL_FILE_PATH, "r") as client_model_file:
-      json_dict = json.load(client_model_file)
-      server_data.m_ClientModel.FromJson(json_dict)
-  except FileNotFoundError:
-    CSELogging.Log("FAILED TO DESERIALIZE CLIENT MODEL FROM FILE, FILE MISSING", __file__)   
-  except json.JSONDecodeError:
-    CSELogging.Log("FAILED TO DESERIALIZE CLIENT MODEL FROM FILE, JSON DECODE ERROR", __file__) 
+  CSEFileSystem.ReadObjectFromFileJson(CSECommon.CLIENT_MODEL_FILE_PATH, server_data.m_ClientModel)
+
+  # Deserialize market model
+  CSEFileSystem.ReadObjectFromFileJson(CSECommon.MARKET_MODEL_FILE_PATH, server_data.m_MarketModel)
 
   # Create item model
   CSELogging.Log("CREATE ITEM MODEL", __file__)
   server_data.m_ItemModel.CreateFromScrape(server_data.m_Scrape.m_ItemsScrape)
-
-  # Init order scrape from file
-  for region_orders_scrape in server_data.m_Scrape.m_OrdersScrape.m_RegionIdToRegionOrdersScrape.values():
-     if region_orders_scrape.m_Valid is True:
-      server_data.m_MarketModel.OnRegionOrdersScraped(region_orders_scrape)
-  server_data.m_Scrape.m_OrdersScrape.m_Valid = True
-
+  
   # Stage models for child threads
   server_data.StageModels()
 
@@ -203,6 +177,7 @@ async def CSEServerLoopMain(server_data : CSEServer):
   server_data.m_OrderScraper = CSEServerOrderScraper.OrderScraper()
   server_data.m_OrderScraper.m_ServerToSelfQueue = queue.Queue()
   server_data.m_OrderScraper.m_SelfToServerQueue = queue.Queue()
+  server_data.m_OrderScraper.m_ItemModel = server_data.m_ItemModel
   server_data.m_OrderScraper.m_Thread = threading.Thread(target=CSEServerOrderScraper.Main, args=(server_data.m_OrderScraper,))
   server_data.m_OrderScraper.m_Thread.start()
 
@@ -233,8 +208,8 @@ async def CSEServerLoopMain(server_data : CSEServer):
         scrape_result = server_data.m_OrderScraper.m_SelfToServerQueue.get_nowait()
         if type(scrape_result) is CSEMessages.CSEMessageScrapeRegionOrdersResult:
           server_data.m_MarketModel.OnRegionOrdersScraped(scrape_result.m_Result)
-          server_data.m_Scrape.m_OrdersScrape.m_RegionIdToRegionOrdersScrape.update({scrape_result.m_Result.m_RegionId : scrape_result.m_Result})
-          WriteScrape(server_data.m_Scrape)
+          file_path = CSECommon.MARKET_MODEL_FILE_PATH
+          CSEFileSystem.WriteObjectJsonToFilePath(file_path, server_data.m_MarketModel)
           server_data.StageModels()
         else:
           raise Exception("Unimplemented message")
@@ -250,13 +225,10 @@ async def CSEServerLoopMain(server_data : CSEServer):
         raise AssertionError("Unimplemented message")
       
     # Write routes to file
-    with open(CSECommon.ROUTES_FILE_PATH, "wb") as routes_file:
-      server_data.m_MapModel.SerializeRouteData(routes_file)
+    server_data.m_MapModel.SerializeRouteData(CSECommon.ROUTES_FILE_PATH) 
 
     # Write client model to file
-    with open(CSECommon.CLIENT_MODEL_FILE_PATH, "w") as client_model_file:
-      client_model_json = server_data.m_ClientModel.ToJson()
-      client_model_file.write(client_model_json)
+    CSEFileSystem.WriteObjectJsonToFilePath(CSECommon.CLIENT_MODEL_FILE_PATH, server_data.m_ClientModel)
       
     # Let http messages get processed
     server_data.m_LockFlask.release()
