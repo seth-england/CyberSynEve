@@ -8,6 +8,8 @@ import requests
 import pickle
 import CSELogging
 import CSEFileSystem
+import CSEServerMessageSystem
+import CSEMessages
 from telnetlib import NOP
 
 class CSERegionData:
@@ -89,13 +91,22 @@ class MapModel:
 
     # Cache the route if we found it
     if route:
-      if not origin_dict:
-        origin_dict = dict[int, list[int]]()
-        self.m_RouteData.m_SystemIdToSystemIdToShortestRoute[origin_system_id] = origin_dict
-      origin_dict[dest_system_id] = route
+      msg = CSEMessages.NewRouteFound()
+      msg.m_Route = route
+      msg.m_OriginSystemId = origin_system_id
+      msg.m_DestSystemId = dest_system_id
+      CSEServerMessageSystem.g_MessageSystem.QueueModelUpdateMessage(msg)
     
     return route
   
+  def HandleNewRouteFound(self, message : CSEMessages.NewRouteFound):
+    if message.m_Route:
+     origin_dict = self.m_RouteData.m_SystemIdToSystemIdToShortestRoute.get(message.m_OriginSystemId)
+     if not origin_dict:
+       origin_dict = dict[int, list[int]]()
+       self.m_RouteData.m_SystemIdToSystemIdToShortestRoute[message.m_OriginSystemId] = origin_dict
+     origin_dict[message.m_DestSystemId] = message.m_Route   
+
   def SerializeRouteData(self, file_path : str):
     CSEFileSystem.WriteObjectJsonToFilePath(file_path, self.m_RouteData)
 

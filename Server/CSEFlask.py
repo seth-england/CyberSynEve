@@ -57,7 +57,7 @@ def Auth():
       new_client_message.m_RefreshToken = refresh_token
       new_client_message.m_ExpiresDateString = json_content.get('ExpiresOn')
       new_client_message.m_UUID = uuid
-      server.m_ClientModel.OnNewClientAuth(new_client_message)
+      server.m_MsgSystem.QueueModelUpdateMessage(new_client_message)
       server.ScheduleClientUpdate(new_client_message.m_CharacterId)
 
     return "", CSECommon.OK_CODE

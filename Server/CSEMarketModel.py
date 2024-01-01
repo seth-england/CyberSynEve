@@ -3,6 +3,7 @@
 # - Volume
 import CSEScraper
 import CSECommon
+import CSEMessages
 from datetime import datetime, timedelta
 
 # Data for an item in a particular region
@@ -17,6 +18,7 @@ class CSEMarketRegionData:
   def __init__(self) -> None:
     self.m_ItemIDToRegionItemDataValueType = ItemData
     self.m_ItemIDToRegionItemData = dict[int, ItemData]()
+    self.m_RegionId = 0
 
 class MarketModel:
   def __init__(self) -> None:
@@ -37,43 +39,46 @@ class MarketModel:
     item_data = region.m_ItemIDToRegionItemData.get(item_id)
     return item_data
 
-  def OnRegionOrdersScraped(self, scrape : CSEScraper.RegionOrdersScrape) -> None:
-    recent_time_delta = timedelta(days=5)
+  def HandleScrapeRegionOrdersResult(self, result : CSEMarketRegionData):
+    self.m_RegionIdToRegionData.update({result.m_RegionId : result})
+    
+def ConvertRegionsOrdersScrapeToRegionMarketData(scrape : CSEScraper.RegionOrdersScrape) -> CSEMarketRegionData():
+  recent_time_delta = timedelta(days=5)
+  region_data = CSEMarketRegionData()
+  region_data.m_RegionId = scrape.m_RegionId
+  for item_id, order_dict_array in scrape.m_ItemIdToHistoryDictArray.items():
+    item_data = ItemData()
+    item_data.m_ItemId = item_id
+    region_data.m_ItemIDToRegionItemData[item_id] = item_data
+    
+    # Figure out which dicts are recent
+    recent_order_dicts = list[dict]()
+    for order_dict in order_dict_array:
+      order_date = order_dict.get('date')
+      if order_date is None:
+        continue
+      order_date_obj = datetime.strptime(order_date, "%Y-%m-%d").date()
+      diff = datetime.today().date() - order_date_obj
+      if diff < recent_time_delta:
+        recent_order_dicts.append(order_dict)
 
-    # Clear the existing region data
-    region_data = CSEMarketRegionData()
-    self.m_RegionIdToRegionData.update({scrape.m_RegionId : region_data})
-    for item_id, order_dict_array in scrape.m_ItemIdToHistoryDictArray.items():
-      item_data = ItemData()
-      item_data.m_ItemId = item_id
-      region_data.m_ItemIDToRegionItemData[item_id] = item_data
+    # Calulate total volume from recent orders
+    for recent_order_dict in recent_order_dicts:
+      volume = recent_order_dict.get('volume')
+      if volume:
+        item_data.m_RecentVolume += volume
+      order_count = recent_order_dict.get('order_count')
+      if order_count:
+        item_data.m_RecentOrderCount += order_count
+    
+    for recent_order_dict in recent_order_dicts:
+      average = recent_order_dict.get('average')
+      volume = recent_order_dict.get('volume')
+      if average > CSECommon.ZERO_TOL and volume > CSECommon.ZERO_TOL and item_data.m_RecentVolume > 0:
+        weight = volume / item_data.m_RecentVolume
+        item_data.m_RecentAveragePrice = item_data.m_RecentAveragePrice + weight * average
 
-      # Figure out which dicts are recent
-      recent_order_dicts = list[dict]()
-      for order_dict in order_dict_array:
-        order_date = order_dict.get('date')
-        if order_date is None:
-          continue
-        order_date_obj = datetime.strptime(order_date, "%Y-%m-%d").date()
-        diff = datetime.today().date() - order_date_obj
-        if diff < recent_time_delta:
-          recent_order_dicts.append(order_dict)
-
-      # Calulate total volume from recent orders
-      for recent_order_dict in recent_order_dicts:
-        volume = recent_order_dict.get('volume')
-        if volume:
-          item_data.m_RecentVolume += volume
-        order_count = recent_order_dict.get('order_count')
-        if order_count:
-          item_data.m_RecentOrderCount += order_count
-      
-      for recent_order_dict in recent_order_dicts:
-        average = recent_order_dict.get('average')
-        volume = recent_order_dict.get('volume')
-        if average > CSECommon.ZERO_TOL and volume > CSECommon.ZERO_TOL and item_data.m_RecentVolume > 0:
-          weight = volume / item_data.m_RecentVolume
-          item_data.m_RecentAveragePrice = item_data.m_RecentAveragePrice + weight * average
+  return region_data   
         
 
   

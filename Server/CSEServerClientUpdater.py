@@ -14,18 +14,21 @@ import CSEItemModel
 import copy
 import time
 import random
+import CSEServerMessageSystem
+import CSEServerModelUpdateHelper
 
 class ClientUpdater:
   def __init__(self) -> None:
-    self.m_ServerToSelfQueue : queue.Queue() = None
-    self.m_SelfToServerQueue : queue.Queue() = None
+    self.m_ServerToSelfQueue : queue.Queue = None
+    self.m_SelfToServerQueue : queue.Queue = None
     self.m_MapModel : CSEMapModel.MapModel = None
     self.m_ClientModel : CSEClientModel.ClientModel = None
     self.m_MarketModel : CSEMarketModel.MarketModel = None
     self.m_ItemModel : CSEItemModel.ItemModel = None
     self.m_Thread : threading.Thread = None
-    self.m_ModelStaging : CSEServerVolatileModelStaging.ModelStaging = None
     self.m_LastStageId : int = None
+    self.m_MsgSystem : CSEServerMessageSystem.MessageSystem = None
+    self.m_ModelUpdateQueue = queue.Queue()
 
   def CalculateProfitableRoute(self, character_id) -> CSEMessages.ProfitableRoute:
     result = CSEMessages.ProfitableRoute()
@@ -144,14 +147,11 @@ class ClientUpdater:
         
 
 def Main(updater : ClientUpdater):
+  updater.m_MsgSystem.RegisterForModelUpdateQueue(threading.get_ident(), updater.m_ModelUpdateQueue)
+
   while True:
     if not updater.m_ServerToSelfQueue.empty():
-      if updater.m_ModelStaging.m_LastStageId != updater.m_LastStageId:
-        with updater.m_ModelStaging.m_Lock:
-          updater.m_ClientModel = copy.deepcopy(updater.m_ModelStaging.m_ClientModel)
-          updater.m_MarketModel = copy.deepcopy(updater.m_ModelStaging.m_MarketModel)
-          updater.m_LastStageId = updater.m_ModelStaging.m_LastStageId
-
+      CSEServerModelUpdateHelper.ApplyAllUpdates(updater.m_ModelUpdateQueue, updater.m_MarketModel, updater.m_ClientModel, updater.m_MapModel)
       message = updater.m_ServerToSelfQueue.get_nowait()
       if type(message) is CSEMessages.CSEMessageUpdateClient:
         update_message : CSEMessages.CSEMessageUpdateClient = message
@@ -185,10 +185,7 @@ def Main(updater : ClientUpdater):
         if res:
           response.m_ShipId = res.get('ship_type_id')     
 
-        # Update local client model with latest data
-        updater.m_ClientModel.HandleUpdateClientResponse(response)
-
         response.m_ProfitableRoute = updater.CalculateProfitableRoute(response.m_CharacterId)
-        updater.m_SelfToServerQueue.put_nowait(response)
+        updater.m_MsgSystem.QueueModelUpdateMessage(response)
     else:
       time.sleep(CSECommon.STANDARD_SLEEP)

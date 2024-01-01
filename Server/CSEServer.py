@@ -27,6 +27,10 @@ import CSEServerVolatileModelStaging
 import copy
 import CSEFileSystem
 import os
+import CSEServerFileWriter
+import CSEServerMessageSystem
+import CSEServerFileWriter
+import CSEServerModelUpdateHelper
 from flask import Flask, request
 from base64 import b64encode
 from telnetlib import NOP
@@ -46,7 +50,9 @@ class CSEServer:
     self.m_ClientUpdater : CSEServerClientUpdater.ClientUpdater = None
     self.m_Thread : threading.Thread = None
     self.m_LockFlask = threading.Lock()
-    self.m_ModelStaging = CSEServerVolatileModelStaging.ModelStaging()
+    self.m_MsgSystem = CSEServerMessageSystem.g_MessageSystem
+    self.m_FileWriter : CSEServerFileWriter.FileWriter = None
+    self.m_ModelUpdateQueue = queue.Queue()
 
   def ScheduleClientUpdate(self, character_id : int):
       client_data = self.m_ClientModel.GetClientByCharacterId(character_id)
@@ -56,15 +62,6 @@ class CSEServer:
         message.m_AccessToken = client_data.m_AccessToken
         message.m_RefreshToken = client_data.m_RefreshToken
         self.m_ClientUpdater.m_ServerToSelfQueue.put_nowait(message)
-
-  def StageModels(self, wait = True):
-    if self.m_ModelStaging.m_Lock.locked() and not wait:
-      return
-    
-    with self.m_ModelStaging.m_Lock:
-      self.m_ModelStaging.m_ClientModel = copy.deepcopy(self.m_ClientModel)
-      self.m_ModelStaging.m_MarketModel = copy.deepcopy(self.m_MarketModel)
-      self.m_ModelStaging.m_LastStageId += 1
 
 def WriteScrape(scrape):
   # Write up to date scrape to file
@@ -169,15 +166,13 @@ async def CSEServerLoopMain(server_data : CSEServer):
   # Create item model
   CSELogging.Log("CREATE ITEM MODEL", __file__)
   server_data.m_ItemModel.CreateFromScrape(server_data.m_Scrape.m_ItemsScrape)
-  
-  # Stage models for child threads
-  server_data.StageModels()
 
   # Start scraping orders
   server_data.m_OrderScraper = CSEServerOrderScraper.OrderScraper()
   server_data.m_OrderScraper.m_ServerToSelfQueue = queue.Queue()
   server_data.m_OrderScraper.m_SelfToServerQueue = queue.Queue()
   server_data.m_OrderScraper.m_ItemModel = server_data.m_ItemModel
+  server_data.m_OrderScraper.m_MsgSystem = server_data.m_MsgSystem
   server_data.m_OrderScraper.m_Thread = threading.Thread(target=CSEServerOrderScraper.Main, args=(server_data.m_OrderScraper,))
   server_data.m_OrderScraper.m_Thread.start()
 
@@ -185,12 +180,22 @@ async def CSEServerLoopMain(server_data : CSEServer):
   server_data.m_ClientUpdater = CSEServerClientUpdater.ClientUpdater()
   server_data.m_ClientUpdater.m_ServerToSelfQueue = queue.Queue()
   server_data.m_ClientUpdater.m_SelfToServerQueue = queue.Queue()
-  server_data.m_ClientUpdater.m_MapModel = server_data.m_MapModel
-  server_data.m_ClientUpdater.m_ModelStaging = server_data.m_ModelStaging
+  server_data.m_ClientUpdater.m_MapModel = copy.deepcopy(server_data.m_MapModel)
+  server_data.m_ClientUpdater.m_MarketModel = copy.deepcopy(server_data.m_MarketModel)
+  server_data.m_ClientUpdater.m_ClientModel = copy.deepcopy(server_data.m_ClientModel)
+  server_data.m_ClientUpdater.m_MsgSystem = server_data.m_MsgSystem
   server_data.m_ClientUpdater.m_ItemModel = server_data.m_ItemModel
   server_data.m_ClientUpdater.m_Thread = threading.Thread(target=CSEServerClientUpdater.Main, args=(server_data.m_ClientUpdater,))
   server_data.m_ClientUpdater.m_Thread.start()
-  
+
+  # Start serializing files
+  server_data.m_FileWriter = CSEServerFileWriter.FileWriter(copy.deepcopy(server_data.m_ClientModel), copy.deepcopy(server_data.m_MapModel), copy.deepcopy(server_data.m_MarketModel), server_data.m_MsgSystem)
+  server_data.m_FileWriter.m_Thread = threading.Thread(target=CSEServerFileWriter.FileWriter.Main, args=(server_data.m_FileWriter,))
+  server_data.m_FileWriter.m_Thread.start()
+
+  # Listen for model updates
+  server_data.m_MsgSystem.RegisterForModelUpdateQueue(threading.get_ident(), server_data.m_ModelUpdateQueue)
+
   while True:
     # Manage order scraping
     if server_data.m_OrderScraper.m_ServerToSelfQueue.empty():
@@ -203,33 +208,9 @@ async def CSEServerLoopMain(server_data : CSEServer):
         server_data.m_RegionScrapeIndex += 1
       else:
         server_data.m_RegionScrapeIndex = 0
-    else:
-      if not server_data.m_OrderScraper.m_SelfToServerQueue.empty():
-        scrape_result = server_data.m_OrderScraper.m_SelfToServerQueue.get_nowait()
-        if type(scrape_result) is CSEMessages.CSEMessageScrapeRegionOrdersResult:
-          server_data.m_MarketModel.OnRegionOrdersScraped(scrape_result.m_Result)
-          file_path = CSECommon.MARKET_MODEL_FILE_PATH
-          CSEFileSystem.WriteObjectJsonToFilePath(file_path, server_data.m_MarketModel)
-          server_data.StageModels()
-        else:
-          raise Exception("Unimplemented message")
     
-    # Recieve client updates from child
-    while not server_data.m_ClientUpdater.m_SelfToServerQueue.empty():
-      response = server_data.m_ClientUpdater.m_SelfToServerQueue.get_nowait()
-      if type(response) == CSEMessages.UpdateClientResponse:
-        server_data.m_ClientModel.HandleUpdateClientResponse(response)
-        server_data.m_ModelStaging.m_ClientModel.HandleUpdateClientResponse(response)
-        server_data.StageModels()
-      else:
-        raise AssertionError("Unimplemented message")
-      
-    # Write routes to file
-    server_data.m_MapModel.SerializeRouteData(CSECommon.ROUTES_FILE_PATH) 
+    CSEServerModelUpdateHelper.ApplyAllUpdates(server_data.m_ModelUpdateQueue, server_data.m_MarketModel, server_data.m_ClientModel, server_data.m_MapModel)
 
-    # Write client model to file
-    CSEFileSystem.WriteObjectJsonToFilePath(CSECommon.CLIENT_MODEL_FILE_PATH, server_data.m_ClientModel)
-      
     # Let http messages get processed
     server_data.m_LockFlask.release()
     time.sleep(.1)

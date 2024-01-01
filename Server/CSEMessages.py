@@ -14,8 +14,8 @@ class CSEMessageScrapeRegionOrders(CSEMessageBase):
 class CSEMessageScrapeRegionOrdersResult(CSEMessageBase):
   def __init__(self) -> None:
     super().__init__()
-    self.m_Result = CSEScraper.RegionOrdersScrape()
     self.m_RegionName = ""
+    self.m_MarketRegionData = None
 
 class CSEMessageNewClientAuth(CSEMessageBase):
   def __init__(self):
@@ -68,3 +68,10 @@ class CheckClientLoginResponse(CSEMessageBase):
     self.m_IsLoggedIn = False
     self.m_CharacterID = 0
     self.m_CharacterName = ""
+
+class NewRouteFound(CSEMessageBase):
+  def __init__(self):
+    super().__init__()
+    self.m_OriginSystemId = 0
+    self.m_DestSystemId = 0
+    self.m_Route = list[int]()
