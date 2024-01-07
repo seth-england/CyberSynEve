@@ -1,4 +1,31 @@
-import CSEMessages
+import CSECommon
+import CSEClientSettings
+
+class CSEProfitableResultEntry:
+  def __init__(self) -> None:
+    self.m_Valid = False
+    self.m_ItemName = ""
+    self.m_ItemId = 0
+    self.m_Profit = -CSECommon.INF
+    self.m_BuyRegionId = 0
+    self.m_BuyRegionName = ""
+    self.m_BuyPrice = 0
+    self.m_BuyPricePerUnit = 0
+    self.m_ItemCount = 0
+    self.m_RateOfProfit = 0.0
+    self.m_SellPrice = 0
+    self.m_SellPricePerUnit = 0
+    self.m_SellRegionId = 0
+    self.m_SellRegionName = ""
+
+  def SortFunc(self):
+    return self.m_RateOfProfit
+
+class CSEProfitableResult:
+  def __init__(self) -> None:
+    self.m_Valid = False
+    self.m_EntriesValueType = CSEProfitableResultEntry
+    self.m_Entries = list[self.m_EntriesValueType]()
 
 class CheckLoginRequest:
   def __init__(self):
@@ -23,6 +50,9 @@ class GetProfitableRoute:
 class GetProfitableRouteResponse:
   def __init__(self):
     self.m_UUID = ""
-    self.m_Route = CSEMessages.ProfitableRoute() 
+    self.m_ProfitableResult = CSEProfitableResult()
 
-
+class SetClientSettings:
+  def __init__(self) -> None:
+    self.m_UUID = ""
+    self.m_Settings = CSEClientSettings.Settings()

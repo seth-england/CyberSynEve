@@ -1,7 +1,9 @@
 from typing import Any
 import CSEMessages
 import CSECommon
+import CSEHTTP
 import json
+import CSEClientSettings
 
 class CSEClientData:
   def __init__(self) -> None:
@@ -14,20 +16,15 @@ class CSEClientData:
     self.m_CharacterRegionId = None
     self.m_ShipID = None
     self.m_UUID = "" # A unique identifier for a client running somewhere in the world
-    self.m_ProfitableRoute = CSEMessages.ProfitableRoute()
+    self.m_ProfitableQueryResult = None
+    self.m_ProfitableResult = CSEHTTP.CSEProfitableResult()
+    self.m_Settings = CSEClientSettings.Settings()
 
 class ClientModel:
   def __init__(self) -> None:
     self.m_CharacterIdToClientDataValueType = CSEClientData
     self.m_CharacterIdToClientData = dict[int, self.m_CharacterIdToClientDataValueType]()
     return
-  
-  def ToJson(self) -> str:
-    res = json.dumps(self, cls=CSECommon.GenericEncoder)
-    return res
-  
-  def FromJson(self, json_dict):
-    CSECommon.FromJson(self, json_dict)
 
   def GetClientByIndex(self, index : int):
     # Check if key exists
@@ -74,8 +71,13 @@ class ClientModel:
       client_data.m_CharacterRegionId = message.m_RegionId
       client_data.m_CharacterSystemId = message.m_SystemId
       client_data.m_ShipID = message.m_ShipId
-      if client_data.m_ProfitableRoute.m_Valid:
-        if message.m_ProfitableRoute.m_Valid:
-          client_data.m_ProfitableRoute = message.m_ProfitableRoute
+      if client_data.m_ProfitableResult and client_data.m_ProfitableResult.m_Valid:
+        if message.ProfitableQueryResult.m_Valid:
+          client_data.m_ProfitableResult = message.ProfitableQueryResult
       else:
-        client_data.m_ProfitableRoute = message.m_ProfitableRoute
+        client_data.m_ProfitableResult = message.ProfitableQueryResult
+  
+  def HandleSetClientSettings(self, message: CSEMessages.SetClientSettings):
+    client_data = self.GetClientByUUID(message.m_UUID)
+    if client_data:
+      client_data.m_Settings = message.m_Settings

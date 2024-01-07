@@ -1,5 +1,7 @@
 import aiohttp
 import CSEScraper
+import CSEHTTP
+import CSEClientSettings
 
 class CSEMessageBase:
   def __init__(self):
@@ -33,20 +35,6 @@ class CSEMessageUpdateClient(CSEMessageBase):
     self.m_AccessToken = ""
     self.m_RefreshToken = ""
 
-class ProfitableRoute:
-  def __init__(self):
-    self.m_Error = ""
-    self.m_Valid = False
-    self.m_BestItemName = ""
-    self.m_BestItemBuyRegionName = ""
-    self.m_BestItemSellRegionName = ""
-    self.m_BestItemProfit = 0
-    self.m_Investment = 0
-    self.m_RateOfProfit = 0
-    self.m_ItemCount = 0
-    self.m_StartRegionMeanPrice = 0
-    self.m_EndRegionMeanPrice = 0
-
 class UpdateClientResponse(CSEMessageBase):
   def __init__(self):
     self.m_CharacterId = 0
@@ -55,7 +43,7 @@ class UpdateClientResponse(CSEMessageBase):
     self.m_SystemId = 0
     self.m_RegionId = 0
     self.m_ShipId = 0
-    self.m_ProfitableRoute = ProfitableRoute()
+    self.ProfitableQueryResult = CSEHTTP.CSEProfitableResult()
 
 class CheckClientLogin(CSEMessageBase):
   def __init__(self):
@@ -75,3 +63,9 @@ class NewRouteFound(CSEMessageBase):
     self.m_OriginSystemId = 0
     self.m_DestSystemId = 0
     self.m_Route = list[int]()
+
+class SetClientSettings(CSEMessageBase):
+  def __init__(self):
+    super().__init__()
+    self.m_UUID = ""
+    self.m_Settings = CSEClientSettings.Settings()

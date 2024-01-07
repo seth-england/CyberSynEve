@@ -98,11 +98,23 @@ def Profitable():
     if client:
       res = CSEHTTP.GetProfitableRouteResponse()
       res.m_UUID = http_request.m_UUID
-      res.m_Route = client.m_ProfitableRoute
+      res.m_ProfitableResult = client.m_ProfitableResult
       res_json = CSECommon.ObjectToJsonDict(res)
       server.ScheduleClientUpdate(client.m_CharacterId)
       return jsonify(res_json), CSECommon.OK_CODE
     return "", CSECommon.NOT_FOUND_CODE
+  
+@app.route(CSECommon.SERVER_CLIENT_SETTINGS_ENDPOINT, methods = ['POST'])
+def SetClientSettings():
+  with server.m_LockFlask:
+    dict = json.loads(request.json)
+    http_request = CSEHTTP.SetClientSettings()
+    CSECommon.FromJson(http_request, dict)
+    message = CSEMessages.SetClientSettings()
+    message.m_UUID = http_request.m_UUID
+    message.m_Settings = http_request.m_Settings
+    server.m_MsgSystem.QueueModelUpdateMessage(message)
+  return "", CSECommon.OK_CODE
 
 server.m_Thread = threading.Thread(target=CSEServer.Main, args=(server,))
 server.m_Thread.start()

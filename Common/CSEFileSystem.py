@@ -42,8 +42,6 @@ def ReadObjectFromFileJsonHelper(file_path : str) -> dict or None:
     with open(file_path, "r") as scrape_file:
       object_dict = json.load(scrape_file)
       return object_dict
-      CSECommon.FromJson(server_data.m_Scrape, scrape_dict)
-      CSELogging.Log("LOAD FROM FILE SUCCESS", __file__)
   except FileNotFoundError:
     CSELogging.Log(f'LOAD FROM {file_path} FAILURE COULD NOT OPEN FILE', __file__)
   except EOFError:

@@ -36,6 +36,7 @@ class CSEStargateData:
   def __init__(self):
     self.m_Name = ""
     self.m_DestSystemId = 0
+    self.m_OriginSystemId = 0
     self.m_Id = 0
 
 class RouteData:
@@ -71,9 +72,29 @@ class MapModel:
       
   def GetStargateById(self, stargate_id) -> CSEStargateData or None:
     return self.m_StargateIdToStargate.get(stargate_id)
-      
+  
   def GetSystemById(self, system_id) -> CSESystemData | None:
     return self.m_SystemIdToSystem.get(system_id)
+  
+  def GetStargateIdsFromRegionId(self, region_id) -> list[int]:
+    result = list[int]()
+    for stargate_id, stargate in self.m_StargateIdToStargate.items():
+      stargate_region_id = self.GetRegionIdBySystemId(stargate.m_OriginSystemId)
+      if stargate_region_id == region_id:
+        result.append(stargate_id)
+    return result
+  
+  def GetAdjacentRegionIds(self, region_id : int) -> set[int]:
+    result_list = list[int]()
+    stargate_ids = self.GetStargateIdsFromRegionId(region_id)
+    for stargate_id in stargate_ids:
+      stargate = self.m_StargateIdToStargate.get(stargate_id)
+      if stargate:
+        dest_region_id = self.GetRegionIdBySystemId(stargate.m_DestSystemId)
+        if dest_region_id != region_id:
+          result_list.append(dest_region_id)
+    result = set(result_list)
+    return result
   
   # Returns a list of system ids
   def GetRouteData(self, origin_system_id, dest_system_id) -> list[int] or None:
@@ -139,6 +160,7 @@ class MapModel:
       destination_dict = stargate_dict['destination']
       system_id = destination_dict['system_id']
       stargate_entry.m_DestSystemId = system_id
+      stargate_entry.m_OriginSystemId = stargate_dict['system_id']
       stargate_entry.m_Id = stargate_dict['stargate_id']
       self.m_StargateIdToStargate[stargate_entry.m_Id] = stargate_entry
 

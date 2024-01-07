@@ -19,6 +19,8 @@ SERVER_PING_ENDPOINT = '/ping'
 SERVER_PING_URL = SERVER_URL + SERVER_PING_ENDPOINT
 SERVER_PROFITABLE_ENDPOINT = '/profitable'
 SERVER_PROFITABLE_URL = SERVER_URL + SERVER_PROFITABLE_ENDPOINT
+SERVER_CLIENT_SETTINGS_ENDPOINT = '/clientsettings'
+SERVER_CLIENT_SETTINGS_URL = SERVER_URL + SERVER_CLIENT_SETTINGS_ENDPOINT
 
 # Eve server
 import ProjectSettings
@@ -50,6 +52,7 @@ CLIENT_ID = 'ba636c6aeae54c8386770bc919ef2bca'
 SCOPES = 'publicData esi-location.read_location.v1 esi-location.read_ship_type.v1'
 STANDARD_SLEEP = .1
 PING_PERIOD = 15
+INF = float("inf")
 
 #Files
 PROJECT_ROOT_PATH = pathlib.Path(__file__).parent.parent.as_posix()
@@ -60,6 +63,7 @@ CLIENT_MODEL_FILE_PATH = PROJECT_ROOT_PATH + '/Server/ClientModel' + SERIALIZED_
 MARKET_MODEL_FILE_PATH = PROJECT_ROOT_PATH + '/Server/MarketModel' + SERIALIZED_FILE_EXT
 REGION_MARKET_SCRAPES_DIR = PROJECT_ROOT_PATH + '/Server/Scrapes/RegionMarkets/'
 BACKUP_FILE_SUFFIX = 'BACK'
+CLIENT_SETTINGS_FILE_PATH = 'ClientSettings' + SERIALIZED_FILE_EXT
 
 def SetObjectFromDict(self, dictionary):
   for key, value in dictionary.items():
@@ -147,8 +151,11 @@ def PostAndDecodeJsonFromURL(url, **args):
       return None
     attempts += 1
   if not good_res is None:
-    json_content = json.loads(res.content)
-    return json_content
+    try:
+      json_content = json.loads(res.content)
+      return json_content
+    except:
+      return None
   else:
     return None
   
@@ -170,6 +177,12 @@ def ObjectToJsonDict(o:object):
   json_dict = json.loads(json_string)
   return json_dict
   
+def FromJsonTypedListHelper(o : list, json_list : dict, list_type):
+  for value in json_list:
+    value_object = list_type()
+    FromJson(value_object, value)
+    o.append(value_object)
+
 def FromJsonTypedDictHelper(o : dict, json_dict : dict, dict_type):
   for key, value in json_dict.items():
     value_object = dict_type()
@@ -238,5 +251,20 @@ def FromJson(o : object, json_dict : dict):
             FromJsonDictHelper(attr, value)
         else:
           FromJson(attr, value)
+      elif value_type is list:
+        if attr_type is list:
+          # Check that it doesn't have a special value type
+          type_key = key + 'ValueType'
+          type_value = None
+          try:
+            type_value = o.__getattribute__(type_key)
+          except:
+            pass
+          if type_value:
+            FromJsonTypedListHelper(attr, value, type_value)
+          else:
+            FromJsonListHelper(attr, value)
+        else:
+          o.__setattr__(key, value) 
       else:
         o.__setattr__(key, value)

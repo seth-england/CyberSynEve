@@ -9,6 +9,8 @@ import CSEHTTP
 import json
 import time
 import threading
+import CSEClientSettings
+import CSEFileSystem
 
 class CSEClient:
   def __init__(self) -> None:
@@ -17,6 +19,7 @@ class CSEClient:
     self.m_CharacterID = 0
     self.m_CharacterName = ""
     self.m_PingThread : threading.Thread() = None
+    self.m_ClientSettings = CSEClientSettings.Settings()
 client = CSEClient()
 
 def PingThread():
@@ -29,6 +32,9 @@ def PingThread():
     except:
       pass
     time.sleep(CSECommon.PING_PERIOD)
+
+CSEFileSystem.ReadObjectFromFileJson(CSECommon.CLIENT_SETTINGS_FILE_PATH, client.m_ClientSettings)
+CSEFileSystem.WriteObjectJsonToFilePath(CSECommon.CLIENT_SETTINGS_FILE_PATH, client.m_ClientSettings)
 
 # Log the user in
 redirect_uri = urllib.parse.quote_plus(CSECommon.SERVER_AUTH_URL)
@@ -48,6 +54,11 @@ while attempts_remaning > 0 and not client.m_LoggedIn:
     res = CSEHTTP.CheckLoginRequestResponse()
     CSECommon.SetObjectFromDict(res, res_dict)
     if res.m_LoggedIn:
+      request = CSEHTTP.SetClientSettings()
+      request.m_UUID = client.m_UUID
+      request.m_Settings = client.m_ClientSettings
+      request_json = json.dumps(CSECommon.ObjectToJsonDict(request))
+      CSECommon.PostAndDecodeJsonFromURL(CSECommon.SERVER_CLIENT_SETTINGS_URL, json=request_json)
       print(f'Welcome {res.m_CharacterName}')
       client.m_UUID = res.m_UUID
       client.m_CharacterID = res.m_CharacterID
@@ -85,21 +96,14 @@ while True:
     if res_json:
       res = CSEHTTP.GetProfitableRouteResponse()
       CSECommon.FromJson(res, res_json)
-      if res.m_Route.m_Valid:
-        print(f'Item name: {res.m_Route.m_BestItemName}')
-        print(f'Buy Region: {res.m_Route.m_BestItemBuyRegionName}')
-        print(f'Sell Region: {res.m_Route.m_BestItemSellRegionName}')
-        print(f'Profit: {res.m_Route.m_BestItemProfit}')
-        print(f'Rate Of Profit: {res.m_Route.m_RateOfProfit}')
-        print(f'Item Count: {res.m_Route.m_ItemCount}')
-        print(f'Start Region Mean Price: {res.m_Route.m_StartRegionMeanPrice}')
-        print(f'End Region Mean Price {res.m_Route.m_EndRegionMeanPrice}')
+      if res.m_ProfitableResult.m_Valid:
+        for profitable_result in res.m_ProfitableResult.m_Entries:
+          print(f'{profitable_result.m_RateOfProfit * 100}% {profitable_result.m_Profit} ISK {profitable_result.m_ItemCount} {profitable_result.m_ItemName} -> {profitable_result.m_SellRegionName}')
+        pass
       else:
-        print("Unable to retrieve best route from server. The server may still be working.")
-        if len(res.m_Route.m_Error) > 0:
-          print(f'Servers says: {res.m_Route.m_Error}')
+        print("Unable to retrieve profitable results from server. The server may still be working.")
     else:
-      print("Unable to retrieve best route from server. The server may still be working.")
+      print("Unable to retrieve profitable results from server. The server may still be working.")
 
         
 
