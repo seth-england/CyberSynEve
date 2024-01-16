@@ -2,7 +2,7 @@ import ProjectSettings
 from copy import deepcopy
 from ctypes import Array
 import CSECommon
-import CSEScraper
+import CSEScrapeHelper
 import copy
 import requests
 import pickle
@@ -136,8 +136,14 @@ class MapModel:
   
   def GetRegionById(self, region_id : int) -> CSERegionData or None:
     return self.m_RegionIdToRegion.get(region_id)
-    
-  def CreateFromScrape(self, scrape : CSEScraper.ScrapeFileFormat):
+  
+  def GetRegionName(self, region_id : int) -> str:
+    region = self.GetRegionById(region_id)
+    if region:
+      return region.m_Name
+    return ""
+
+  def CreateFromScrape(self, scrape : CSEScrapeHelper.ScrapeFileFormat):
     # Gather the regions
     for region_dict in scrape.m_RegionsScrape.m_RegionIdToDict.values():
       region_entry = CSERegionData()

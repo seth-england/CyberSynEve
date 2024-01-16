@@ -1,7 +1,7 @@
 import multiprocessing
 import CSEMessages
 import asyncio
-import CSEScraper
+import CSEScrapeHelper
 import CSELogging
 import aiohttp
 import queue
@@ -31,7 +31,7 @@ class OrderScraper:
           self.m_ScrapeMessage = message
           CSELogging.Log(f'SCRAPING ORDERS FROM REGION {self.m_ScrapeMessage.m_RegionName}', __file__)
           result = CSEMessages.CSEMessageScrapeRegionOrdersResult()
-          scrape = await CSEScraper.ScrapeRegionOrders(self.m_ScrapeMessage.m_RegionId, client_session)
+          scrape = await CSEScrapeHelper.ScrapeRegionOrders(self.m_ScrapeMessage.m_RegionId, client_session)
           result.m_MarketRegionData = CSEMarketModel.ConvertRegionsOrdersScrapeToRegionMarketData(scrape)
           result.m_RegionName = message.m_RegionName
           self.m_MsgSystem.QueueModelUpdateMessage(result)

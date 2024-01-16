@@ -7,7 +7,8 @@ from CSEHTTP import CSEProfitableResult, CSEProfitableResultEntry
 def ProfitableQuery(map_model : CSEMapModel.MapModel,
                     market_model : CSEMarketModel.MarketModel,
                     item_model : CSEItemModel.ItemModel,
-                    starting_region_id : int, 
+                    starting_region_id : int,
+                    pct_of_recent_volume_limit : float = .05,
                     end_region_id : int or None = None, 
                     max_ship_volume : int or None = None,
                     min_order_count : int or None = None,
@@ -72,13 +73,21 @@ def ProfitableQuery(map_model : CSEMapModel.MapModel,
       end_region = map_model.GetRegionById(end_region_id)
       if end_region is None:
         continue
-      item_count = int(min(item_count_capacity, end_market_item_data.m_RecentVolume))
+      item_count = int(min(item_count_capacity, end_market_item_data.m_RecentVolume * pct_of_recent_volume_limit))
+      item_count = int(min(item_count, start_market_item_data.m_RecentVolume * pct_of_recent_volume_limit))
       if item_count < 1:
         continue
       
       # Calculate profit
-      buy_price = start_market_item_data.m_RecentAveragePrice * item_count
-      sell_price = end_market_item_data.m_RecentAveragePrice * item_count
+      buy_unit_price = market_model.GetMeanSellPriceOfItemBelowVolumePercent(starting_region_id, item_id)
+      sell_unit_price = market_model.GetMeanSellPriceOfItemBelowVolumePercent(end_region_id, item_id)
+      sell_unit_price = min(end_market_item_data.m_RecentHighPrice, sell_unit_price)
+      if buy_unit_price < CSECommon.ZERO_TOL:
+        continue
+      if sell_unit_price < CSECommon.ZERO_TOL:
+        continue
+      buy_price = buy_unit_price * item_count
+      sell_price = sell_unit_price * item_count
       profit = sell_price - buy_price
       rate_of_profit = profit / buy_price
       if profit < min_profit:
@@ -94,12 +103,14 @@ def ProfitableQuery(map_model : CSEMapModel.MapModel,
         potential_entry.m_BuyRegionName = start_region.m_Name
         potential_entry.m_BuyPrice = buy_price
         potential_entry.m_BuyPricePerUnit = buy_price / item_count
+        potential_entry.m_BuyRegionSellOrderCount = market_model.GetSellOrderCount(starting_region_id, item_id)
         potential_entry.m_ItemCount = item_count
         potential_entry.m_RateOfProfit = rate_of_profit
         potential_entry.m_SellPrice = sell_price
         potential_entry.m_SellPricePerUnit = sell_price / item_count
         potential_entry.m_SellRegionId = end_region_id
-        potential_entry.m_SellRegionName = end_region.m_Name 
+        potential_entry.m_SellRegionName = end_region.m_Name
+        potential_entry.m_SellRegionSellOrderCount = market_model.GetSellOrderCount(end_region_id, item_id)
     if potential_entry.m_Valid:
       profitable_entries.append(potential_entry)
 

@@ -59,6 +59,7 @@ class RegionOrdersScrape(ScrapeBase):
   def __init__(self) -> None:
     super().__init__()
     self.m_ItemIdToHistoryDictArray = dict[int, list[dict]]()
+    self.m_ItemIdToOrderDictArray = dict[int, list[dict]]()
     self.m_RegionId = 0
 
 class OrdersScrape(ScrapeBase):
@@ -71,6 +72,12 @@ class ItemsScrape(ScrapeBase):
   def __init__(self) -> None:
     super().__init__()
     self.m_ItemIdToDict = dict[int, dict]()
+
+class CharacterOrdersScrape(ScrapeBase):
+  def __init__(self) -> None:
+    super().__init__()
+    self.m_CharacterID = 0
+    self.m_OrderDictArray = list[dict]()
 
 class ScrapeFileFormat:
   def __init__(self) -> None:
@@ -224,6 +231,11 @@ async def ScrapeRegionOrders(region_id, client_session : aiohttp.ClientSession) 
         type_id = dict.get('type_id')
         if type_id:
           unique_type_ids[int(type_id)] = True
+          order_dict_array = region_orders_scrape.m_ItemIdToOrderDictArray.get(type_id)
+          if order_dict_array is None:
+            order_dict_array = list()
+            region_orders_scrape.m_ItemIdToOrderDictArray[type_id] = order_dict_array
+          order_dict_array.append(dict)
     page_number = page_number + 1
 
   # Get the history data of the type ids on the market
@@ -278,4 +290,18 @@ async def ScrapeItemTypes(client_session : aiohttp.ClientSession) -> ItemsScrape
   result.m_ItemIdToDict = id_to_dict
   result.m_Valid = True
   result.m_Time = time.time()
+  return result
+
+def ScrapeCurrentCharacterOrders(character_id : int, access_token : str) -> CharacterOrdersScrape:
+  result = CharacterOrdersScrape()
+  result.m_Valid = True
+  result.m_Time = time.time()
+  result.m_CharacterID = character_id
+
+  url = CSECommon.EVE_SERVER_ROOT + f'characters/{character_id}/orders/'
+  parameters = { 'character_id' : character_id, 'token': access_token }
+  orders = CSECommon.DecodeJsonFromURL(url, params=parameters)
+  if orders is not None:
+    for order_dict in orders:
+      result.m_OrderDictArray.append(order_dict)
   return result

@@ -86,8 +86,11 @@ client.m_PingThread.start()
 while True:
   print("Select an option below: ") 
   print("1) Find a profitable route")
+  print("2) Find undercuts")
   user_input = input()
-  if user_input.find('1', 0, 0):
+
+  # Profitable query 
+  if user_input.find('1') > -1:
     print("Fetching from server...")
     request = CSEHTTP.GetProfitableRoute()
     request.m_UUID = client.m_UUID
@@ -97,14 +100,46 @@ while True:
       res = CSEHTTP.GetProfitableRouteResponse()
       CSECommon.FromJson(res, res_json)
       if res.m_ProfitableResult.m_Valid:
-        for profitable_result in res.m_ProfitableResult.m_Entries:
-          print(f'{profitable_result.m_RateOfProfit * 100}% {profitable_result.m_Profit} ISK {profitable_result.m_ItemCount} {profitable_result.m_ItemName} -> {profitable_result.m_SellRegionName}')
+        for i,profitable_result in enumerate(res.m_ProfitableResult.m_Entries):
+          print(f'{i}. {profitable_result.m_RateOfProfit * 100:.1f}% {profitable_result.m_Profit:,.1f} ISK {profitable_result.m_ItemCount} {profitable_result.m_ItemName} -> {profitable_result.m_SellRegionName}')
+        print("Profitable items and where to sell. Press numbers for more info. Press anything else to go back.")
+        while True:
+          user_input = input()
+          if user_input.isnumeric():
+            index = int(user_input)
+            if index < len(res.m_ProfitableResult.m_Entries):
+              profitable_result = res.m_ProfitableResult.m_Entries[index]
+              for key, value in profitable_result.__dict__.items():
+                if type(value) is float:
+                  print(f'{key}: {value:,.1f}')
+                else:
+                  print(f'{key}: {value}')
+            else:
+              break
+          else:
+            break
         pass
       else:
         print("Unable to retrieve profitable results from server. The server may still be working.")
     else:
       print("Unable to retrieve profitable results from server. The server may still be working.")
-
-        
+  # Undercut query
+  elif user_input.find('2') > -1:
+    request = CSEHTTP.UndercutRequest()
+    request.m_UUID = client.m_UUID
+    request.m_CharacterId = client.m_CharacterID
+    request_json = CSECommon.ObjectToJsonString(request)
+    res_json = CSECommon.DecodeJsonFromURL(CSECommon.SERVER_UNDERCUT_URL, json=request_json)
+    if res_json:
+      res = CSEHTTP.UndercutResponse()
+      CSECommon.FromJson(res, res_json)
+      if res.m_Result.m_Valid:
+        for result in res.m_Result.m_ResultsSameStation:
+          print(f'{result.m_RegionName} {result.m_ItemName} price: {result.m_SelfPrice} volume: {result.m_SelfVolume} undercut by lowest price: {result.m_LowestPrice} and volume {result.m_Volume} recent sell volume is about {result.m_RecentSellVolumeEst}')
+        pass
+      else:
+         print("Unable to retrieve undercut results from server. The server may still be working.")
+    else:
+      print("Unable to retrieve undercut results from server. The server may still be working.")
 
   continue

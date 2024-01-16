@@ -1,5 +1,6 @@
 import CSECommon
 import CSEClientSettings
+import CSEUndercutResult
 
 class CSEProfitableResultEntry:
   def __init__(self) -> None:
@@ -11,12 +12,14 @@ class CSEProfitableResultEntry:
     self.m_BuyRegionName = ""
     self.m_BuyPrice = 0
     self.m_BuyPricePerUnit = 0
+    self.m_BuyRegionSellOrderCount = 0
     self.m_ItemCount = 0
     self.m_RateOfProfit = 0.0
     self.m_SellPrice = 0
     self.m_SellPricePerUnit = 0
     self.m_SellRegionId = 0
     self.m_SellRegionName = ""
+    self.m_SellRegionSellOrderCount = 0
 
   def SortFunc(self):
     return self.m_RateOfProfit
@@ -56,3 +59,14 @@ class SetClientSettings:
   def __init__(self) -> None:
     self.m_UUID = ""
     self.m_Settings = CSEClientSettings.Settings()
+
+class UndercutRequest:
+  def __init__(self) -> None:
+    self.m_UUID = ""
+    self.m_CharacterId = 0
+
+class UndercutResponse:
+  def __init__(self) -> None:
+    self.m_UUID = ""
+    self.m_CharacterId = 0
+    self.m_Result = CSEUndercutResult.CSEUndercutResult()

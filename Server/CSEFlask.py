@@ -5,7 +5,7 @@ import requests
 import webbrowser
 import json
 import CSEMapModel
-import CSEScraper
+import CSEScrapeHelper
 import asyncio
 import aiohttp
 import multiprocessing
@@ -115,6 +115,23 @@ def SetClientSettings():
     message.m_Settings = http_request.m_Settings
     server.m_MsgSystem.QueueModelUpdateMessage(message)
   return "", CSECommon.OK_CODE
+
+@app.route(CSECommon.SERVER_UNDERCUT_ENDPOINT)
+def Undercut():
+  with server.m_LockFlask:
+    dict = json.loads(request.json)
+    http_request = CSEHTTP.UndercutRequest()
+    CSECommon.FromJson(http_request, dict)
+    response = CSEHTTP.UndercutResponse()
+    client = server.m_ClientModel.GetClientByCharacterId(http_request.m_CharacterId)
+    if client:
+      response.m_UUID = http_request.m_UUID
+      response.m_CharacterId = http_request.m_CharacterId
+      response.m_Result = client.m_UndercutResult
+      return CSECommon.ObjectToJsonString(response), CSECommon.OK_CODE
+    else:
+      return "", CSECommon.NOT_FOUND_CODE
+  return "", CSECommon.NOT_FOUND_CODE
 
 server.m_Thread = threading.Thread(target=CSEServer.Main, args=(server,))
 server.m_Thread.start()

@@ -6,7 +6,7 @@ import requests
 import webbrowser
 import json
 import CSEMapModel
-import CSEScraper
+import CSEScrapeHelper
 import asyncio
 import aiohttp
 import multiprocessing
@@ -18,18 +18,17 @@ import typing
 import pickle
 import CSEItemModel
 import CSEClientModel
-import CSEServerClientUpdater
+import Workers.CSEServerClientUpdater as CSEServerClientUpdater
 import threading
 import time
 import inspect
 import queue
-import CSEServerVolatileModelStaging
 import copy
 import CSEFileSystem
 import os
-import CSEServerFileWriter
+import Workers.CSEServerFileWriter as CSEServerFileWriter
 import CSEServerMessageSystem
-import CSEServerFileWriter
+import Workers.CSEServerFileWriter as CSEServerFileWriter
 import CSEServerModelUpdateHelper
 from flask import Flask, request
 from base64 import b64encode
@@ -37,7 +36,7 @@ from telnetlib import NOP
 
 class CSEServer:
   def __init__(self):
-    self.m_Scrape = CSEScraper.ScrapeFileFormat()
+    self.m_Scrape = CSEScrapeHelper.ScrapeFileFormat()
     self.m_Connector : aiohttp.TCPConnector = None
     self.m_ClientSession : aiohttp.ClientSession = None
     self.m_MapModel = CSEMapModel.MapModel()
@@ -83,13 +82,13 @@ async def CSEServerLoopMain(server_data : CSEServer):
 
   if not server_data.m_Scrape.m_RegionIdsScrape.m_Valid:
     CSELogging.Log("SCRAPING REGION IDS", __file__)
-    server_data.m_Scrape.m_RegionIdsScrape = CSEScraper.ScrapeRegionIds()
+    server_data.m_Scrape.m_RegionIdsScrape = CSEScrapeHelper.ScrapeRegionIds()
     CSELogging.Log("REGION IDS SCRAPED", __file__)
     WriteScrape(server_data.m_Scrape)
 
   if not server_data.m_Scrape.m_RegionsScrape.m_Valid:
     CSELogging.Log("SCRAPING REGIONS", __file__)
-    server_data.m_Scrape.m_RegionsScrape = await CSEScraper.ScrapeRegionData(server_data.m_Scrape.m_RegionIdsScrape.m_Ids, server_data.m_ClientSession)
+    server_data.m_Scrape.m_RegionsScrape = await CSEScrapeHelper.ScrapeRegionData(server_data.m_Scrape.m_RegionIdsScrape.m_Ids, server_data.m_ClientSession)
     CSELogging.Log("REGIONS SCRAPED", __file__)
     WriteScrape(server_data.m_Scrape)
 
@@ -99,7 +98,7 @@ async def CSEServerLoopMain(server_data : CSEServer):
     for region_dict in server_data.m_Scrape.m_RegionsScrape.m_RegionIdToDict.values():
       for constellation_id in region_dict['constellations']:
         constellation_ids.append(constellation_id)
-    server_data.m_Scrape.m_ConstellationsScrape = await CSEScraper.ScrapeConstellations(constellation_ids, server_data.m_ClientSession)
+    server_data.m_Scrape.m_ConstellationsScrape = await CSEScrapeHelper.ScrapeConstellations(constellation_ids, server_data.m_ClientSession)
     CSELogging.Log("CONSTELLATIONS SCRAPED", __file__)
     WriteScrape(server_data.m_Scrape)
 
@@ -110,7 +109,7 @@ async def CSEServerLoopMain(server_data : CSEServer):
       constellation_systems = constellation_dict['systems']
       for system_id in constellation_systems:
         system_ids.append(system_id)
-    server_data.m_Scrape.m_SystemsScrape = await CSEScraper.ScrapeSystems(system_ids, server_data.m_ClientSession)
+    server_data.m_Scrape.m_SystemsScrape = await CSEScrapeHelper.ScrapeSystems(system_ids, server_data.m_ClientSession)
     CSELogging.Log("SYSTEMS SCRAPED", __file__)
     WriteScrape(server_data.m_Scrape)
 
@@ -123,7 +122,7 @@ async def CSEServerLoopMain(server_data : CSEServer):
           stargate_ids.append(stargate_id)
       except:
         NOP
-    server_data.m_Scrape.m_StargatesScrape = await CSEScraper.ScrapeStargates(stargate_ids, server_data.m_ClientSession)
+    server_data.m_Scrape.m_StargatesScrape = await CSEScrapeHelper.ScrapeStargates(stargate_ids, server_data.m_ClientSession)
     CSELogging.Log("STARGATES SCRAPED", __file__)
     WriteScrape(server_data.m_Scrape)
 
@@ -136,13 +135,13 @@ async def CSEServerLoopMain(server_data : CSEServer):
           station_ids.append(station_id)
       except:
         NOP
-    server_data.m_Scrape.m_StationsScrape = await CSEScraper.ScrapeStations(station_ids, server_data.m_ClientSession)
+    server_data.m_Scrape.m_StationsScrape = await CSEScrapeHelper.ScrapeStations(station_ids, server_data.m_ClientSession)
     CSELogging.Log("SCRAPED STATIONS", __file__)
     WriteScrape(server_data.m_Scrape)
 
   if not server_data.m_Scrape.m_ItemsScrape.m_Valid:
     CSELogging.Log("SCRAPING ITEM TYPES", __file__)
-    server_data.m_Scrape.m_ItemsScrape = await CSEScraper.ScrapeItemTypes(server_data.m_ClientSession)
+    server_data.m_Scrape.m_ItemsScrape = await CSEScrapeHelper.ScrapeItemTypes(server_data.m_ClientSession)
     CSELogging.Log("SCRAPED ITEM TYPES", __file__)
     WriteScrape(server_data.m_Scrape)
 
@@ -158,9 +157,11 @@ async def CSEServerLoopMain(server_data : CSEServer):
   server_data.m_MapModel.DeserializeRouteData(CSECommon.ROUTES_FILE_PATH)
 
   # Deserialize client model
+  CSELogging.Log("READING CLIENT MODEL FROM FILE", __file__)
   CSEFileSystem.ReadObjectFromFileJson(CSECommon.CLIENT_MODEL_FILE_PATH, server_data.m_ClientModel)
 
   # Deserialize market model
+  CSELogging.Log("READING MARKET MODEL FROM FILE", __file__)
   CSEFileSystem.ReadObjectFromFileJson(CSECommon.MARKET_MODEL_FILE_PATH, server_data.m_MarketModel)
 
   # Create item model

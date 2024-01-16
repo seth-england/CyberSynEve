@@ -7,7 +7,6 @@ import CSECommon
 import queue
 import threading
 import CSEMapModel
-import CSEServerVolatileModelStaging
 import CSEClientModel
 import CSEMarketModel
 import CSEItemModel
@@ -16,8 +15,10 @@ import time
 import random
 import CSEServerMessageSystem
 import CSEServerModelUpdateHelper
-import CSEProfitableQuery
+import Queries.CSEProfitableQuery as CSEProfitableQuery
 import CSEClientSettings
+import CSEScrapeHelper
+import Queries.CSEUndercutQuery as CSEUndercutQuery
 
 class ClientUpdater:
   def __init__(self) -> None:
@@ -82,7 +83,7 @@ def Main(updater : ClientUpdater):
         if client:
           client_settings = client.m_Settings         
         if region_id:
-          response.ProfitableQueryResult = \
+          response.m_ProfitableQueryResult = \
           CSEProfitableQuery.ProfitableQuery\
           ( \
             updater.m_MapModel, 
@@ -94,6 +95,18 @@ def Main(updater : ClientUpdater):
             min_profit=client_settings.m_ProfitableSettings.m_MinProfit,
             min_profit_rate=client_settings.m_ProfitableSettings.m_MinRateOfProfit
           ) 
+
+        # Get the character's orders
+        character_orders_scrape = CSEScrapeHelper.ScrapeCurrentCharacterOrders(response.m_CharacterId, response.m_AccessToken)
+        update_character_orders_message = CSEMessages.UpdateCharacterOrders()
+        update_character_orders_message.m_CharacterId = response.m_CharacterId
+        update_character_orders_message.m_OrderDictArray = character_orders_scrape.m_OrderDictArray 
+        updater.m_MsgSystem.QueueModelUpdateMessage(update_character_orders_message)
+        CSEServerModelUpdateHelper.ApplyAllUpdates(updater.m_ModelUpdateQueue, updater.m_MarketModel, updater.m_ClientModel, updater.m_MapModel)
+
+        # Run the undercut query
+        undercut_query_result = CSEUndercutQuery.UndercutQuery(response.m_CharacterId, updater.m_ClientModel, updater.m_MarketModel, updater.m_ItemModel, updater.m_MapModel)
+        response.m_UndercutQueryResult = undercut_query_result
 
         updater.m_MsgSystem.QueueModelUpdateMessage(response)
     else:

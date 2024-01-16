@@ -21,6 +21,8 @@ SERVER_PROFITABLE_ENDPOINT = '/profitable'
 SERVER_PROFITABLE_URL = SERVER_URL + SERVER_PROFITABLE_ENDPOINT
 SERVER_CLIENT_SETTINGS_ENDPOINT = '/clientsettings'
 SERVER_CLIENT_SETTINGS_URL = SERVER_URL + SERVER_CLIENT_SETTINGS_ENDPOINT
+SERVER_UNDERCUT_ENDPOINT = '/undercut'
+SERVER_UNDERCUT_URL = SERVER_URL + SERVER_UNDERCUT_ENDPOINT
 
 # Eve server
 import ProjectSettings
@@ -49,7 +51,7 @@ ERROR_PRONE_TASK_LIMIT = 10 # Task count for cases where all tasks might fail so
 ZERO_TOL = .0001
 STATE_STRING = "CSEStateString"
 CLIENT_ID = 'ba636c6aeae54c8386770bc919ef2bca'
-SCOPES = 'publicData esi-location.read_location.v1 esi-location.read_ship_type.v1'
+SCOPES = 'publicData esi-location.read_location.v1 esi-location.read_ship_type.v1 esi-wallet.read_character_wallet.v1 esi-markets.read_character_orders.v1'
 STANDARD_SLEEP = .1
 PING_PERIOD = 15
 INF = float("inf")
@@ -167,13 +169,21 @@ class GenericEncoder(JSONEncoder):
       for member_name_tuple in member_names:
         member_name = member_name_tuple[0]
         value = getattr(obj, member_name)
-        if not member_name.startswith('__') and not inspect.ismethod(value):
+        if member_name.startswith('__'):
+          continue
+        elif inspect.ismethod(value):
+          continue
+        if not member_name.startswith('__') and not inspect.ismethod(value) and not type(value) is type:
           result_dict[member_name] = value
       return result_dict
     return json.JSONEncoder.default(self, obj)
-  
-def ObjectToJsonDict(o:object):
+
+def ObjectToJsonString(o:object):
   json_string = json.dumps(o, cls=GenericEncoder)
+  return json_string
+
+def ObjectToJsonDict(o:object):
+  json_string = ObjectToJsonString(o)
   json_dict = json.loads(json_string)
   return json_dict
   
@@ -235,7 +245,11 @@ def FromJson(o : object, json_dict : dict):
     if attr is not None:
       value_type = type(value)
       attr_type = type(attr)
-      if value_type is dict:
+      if inspect.ismethod(value):
+        continue
+      elif attr_type is type:
+        continue
+      elif value_type is dict:
         # The member is a dict
         if attr_type is dict:
           # Check that it doesn't have a special value type

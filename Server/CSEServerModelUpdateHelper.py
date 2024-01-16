@@ -45,6 +45,10 @@ def ApplyAllUpdates(q : queue.Queue, market_model : CSEMarketModel.MarketModel, 
         client_model.HandleSetClientSettings(msg)
         results.m_AppliedAnyUpdate = True
         results.m_AppliedClientModelUpdate = True
-
-  
+    elif type(msg) == CSEMessages.UpdateCharacterOrders:
+      if client_model:
+        client_model.HandleUpdateCharacterOrders(msg)
+        results.m_AppliedAnyUpdate = True
+        results.m_AppliedClientModelUpdate = True
+ 
   return results

@@ -1,5 +1,5 @@
 # Stores and allows basic info about an item to be queried by id
-import CSEScraper
+import CSEScrapeHelper
 
 class CSEItemModelItemData:
   def __init__(self) -> None:
@@ -21,7 +21,7 @@ class ItemModel:
   def GetAllItemIds(self) -> list[int]:
     return list(self.m_ItemIdToItemData.keys())
 
-  def CreateFromScrape(self, scrape: CSEScraper.ItemsScrape) -> None:
+  def CreateFromScrape(self, scrape: CSEScrapeHelper.ItemsScrape) -> None:
     for item_id, item_dict in scrape.m_ItemIdToDict.items():
       item_data = CSEItemModelItemData()
       item_data.m_Id = item_id
