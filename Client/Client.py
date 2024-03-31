@@ -135,7 +135,7 @@ while True:
       CSECommon.FromJson(res, res_json)
       if res.m_Result.m_Valid:
         for result in res.m_Result.m_ResultsSameStation:
-          print(f'{result.m_RegionName} {result.m_ItemName} price: {result.m_SelfPrice} volume: {result.m_SelfVolume} undercut by lowest price: {result.m_LowestPrice} and volume {result.m_Volume} recent sell volume is about {result.m_RecentSellVolumeEst}')
+          print(f'{result.m_RegionName} {result.m_ItemName} price: {result.m_SelfPrice} volume: {result.m_SelfVolume} undercut by lowest price: {result.m_LowestPrice} and volume {result.m_ItemCount} recent sell volume is about {result.m_RecentSellVolumeEst}')
         pass
       else:
          print("Unable to retrieve undercut results from server. The server may still be working.")

@@ -96,6 +96,31 @@ class MapModel:
     result = set(result_list)
     return result
   
+  def GetMajorHubRegionIds(self) -> set[int]:
+    result = set[int]()
+    forge_id = self.GetRegionIdByName("The Forge")
+    if forge_id:
+      result = result.union(set[int]({forge_id}))
+    domain_id = self.GetRegionIdByName("Domain")
+    if domain_id:
+      result = result.union(set[int]({domain_id}))
+    heimatar_id = self.GetRegionIdByName("Heimatar")
+    if heimatar_id:
+      result = result.union(set[int]({heimatar_id}))
+    sinq_id = self.GetRegionIdByName("Sinq Laison")
+    if sinq_id:
+      result = result.union(set[int]({sinq_id}))
+    metropolis_id = self.GetRegionIdByName("Metropolis")
+    if metropolis_id:
+      result = result.union(set[int]({metropolis_id}))
+    return result
+    
+  def GetRegionIdByName(self, name: str) -> int or None:
+    for region in self.m_RegionIdToRegion.values():
+      if region.m_Name == name:
+        return region.m_Id
+    return None
+  
   # Returns a list of system ids
   def GetRouteData(self, origin_system_id, dest_system_id) -> list[int] or None:
     # Look at already cached routes

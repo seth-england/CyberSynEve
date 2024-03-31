@@ -48,7 +48,7 @@ def UndercutQuery \
       for order in better_orders_same_station:
         if order.m_Price < new_result.m_LowestPrice:
           new_result.m_LowestPrice = order.m_Price
-        new_result.m_Volume += order.m_Volume
+        new_result.m_ItemCount += order.m_ItemCount
       result.m_ResultsSameStation.append(new_result)
   return result
     

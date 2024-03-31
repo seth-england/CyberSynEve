@@ -29,7 +29,7 @@ class OrderScraper:
         message = self.m_ServerToSelfQueue.get_nowait()
         if type(message) is CSEMessages.CSEMessageScrapeRegionOrders:
           self.m_ScrapeMessage = message
-          CSELogging.Log(f'SCRAPING ORDERS FROM REGION {self.m_ScrapeMessage.m_RegionName}', __file__)
+          CSELogging.Log(f'{self.m_ScrapeMessage.m_RegionIndex}. SCRAPING ORDERS FROM REGION {self.m_ScrapeMessage.m_RegionName}', __file__)
           result = CSEMessages.CSEMessageScrapeRegionOrdersResult()
           scrape = await CSEScrapeHelper.ScrapeRegionOrders(self.m_ScrapeMessage.m_RegionId, client_session)
           result.m_MarketRegionData = CSEMarketModel.ConvertRegionsOrdersScrapeToRegionMarketData(scrape)

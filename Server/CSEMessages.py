@@ -13,6 +13,7 @@ class CSEMessageScrapeRegionOrders(CSEMessageBase):
     super().__init__()
     self.m_RegionId = -1
     self.m_RegionName = ""
+    self.m_RegionIndex = 0
 
 class CSEMessageScrapeRegionOrdersResult(CSEMessageBase):
   def __init__(self) -> None:

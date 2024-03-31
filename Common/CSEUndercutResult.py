@@ -9,7 +9,7 @@ class CSEUndercutResultEntry:
     self.m_RegionId = 0
     self.m_RegionName = ""
     self.m_LowestPrice = CSECommon.INF
-    self.m_Volume = 0
+    self.m_ItemCount = 0
     self.m_SelfVolume = 0
     self.m_SelfPrice = 0
     self.m_RecentSellVolumeEst = 0

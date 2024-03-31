@@ -27,6 +27,9 @@ def ProfitableQuery(map_model : CSEMapModel.MapModel,
   else:
     # Find adjacent regions
     end_region_ids = map_model.GetAdjacentRegionIds(starting_region_id)
+    # Add major hubs
+    hub_ids = map_model.GetMajorHubRegionIds()
+    end_region_ids = end_region_ids.union(hub_ids)
 
   # Build the set of relevent items
   start_region_item_ids = market_model.GetItemIdsFromRegionId(starting_region_id)
@@ -79,8 +82,8 @@ def ProfitableQuery(map_model : CSEMapModel.MapModel,
         continue
       
       # Calculate profit
-      buy_unit_price = market_model.GetMeanSellPriceOfItemBelowVolumePercent(starting_region_id, item_id)
-      sell_unit_price = market_model.GetMeanSellPriceOfItemBelowVolumePercent(end_region_id, item_id)
+      buy_unit_price = market_model.GetMeanSellPriceOfItemUpToItemCount(starting_region_id, item_id, item_count)
+      sell_unit_price = market_model.GetMeanSellPriceOfItemUpToItemCount(end_region_id, item_id, item_count)
       sell_unit_price = min(end_market_item_data.m_RecentHighPrice, sell_unit_price)
       if buy_unit_price < CSECommon.ZERO_TOL:
         continue

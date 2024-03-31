@@ -40,7 +40,7 @@ class CSEServer:
     self.m_Connector : aiohttp.TCPConnector = None
     self.m_ClientSession : aiohttp.ClientSession = None
     self.m_MapModel = CSEMapModel.MapModel()
-    self.m_RegionScrapeIndex = 0
+    self.m_RegionScrapeIndex = 28
     self.m_MarketModel = CSEMarketModel.MarketModel()
     self.m_OrderScraper : CSEServerOrderScraper.OrderScraper = None
     self.m_ItemModel = CSEItemModel.ItemModel()
@@ -205,6 +205,7 @@ async def CSEServerLoopMain(server_data : CSEServer):
         scrape_region_orders = CSEMessages.CSEMessageScrapeRegionOrders()
         scrape_region_orders.m_RegionId = region_to_scrape.m_Id
         scrape_region_orders.m_RegionName = region_to_scrape.m_Name
+        scrape_region_orders.m_RegionIndex = server_data.m_RegionScrapeIndex
         server_data.m_OrderScraper.m_ServerToSelfQueue.put_nowait(scrape_region_orders)
         server_data.m_RegionScrapeIndex += 1
       else:

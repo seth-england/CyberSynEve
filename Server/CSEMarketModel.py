@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 class ItemOrder:
   def __init__(self) -> None:
     self.m_BuyOrder = False
-    self.m_Volume = 0
+    self.m_ItemCount = 0
     self.m_Price = 0
     self.m_StationId = 0
   
@@ -36,6 +36,7 @@ class RegionData:
     self.m_ItemIDToRegionItemDataValueType = ItemData
     self.m_ItemIDToRegionItemData = dict[int, ItemData]()
     self.m_RegionId = 0
+    self.m_Time = ""
 
 class MarketModel:
   def __init__(self) -> None:
@@ -57,7 +58,7 @@ class MarketModel:
       result = item_data.m_SellOrderVolume
     return result
 
-  def GetMeanSellPriceOfItemBelowVolumePercent(self, region_id : int, item_id : int, volume_pct : float = .1) -> float:
+  def GetMeanSellPriceOfItemUpToItemCount(self, region_id : int, item_id : int, item_count : int) -> float:
     mean_price = 0.0
     item_data = self.GetItemDataFromRegionIdAndItemId(region_id, item_id)
     if item_data is None:
@@ -67,27 +68,25 @@ class MarketModel:
     if total_volume < CSECommon.ZERO_TOL:
       return mean_price
 
-    # Consider the orders below a certain volume
-    considered_volume = 0
+    # Consider the orders below a certain count
+    considered_count = 0
     considered_price = 0
     should_break = False
     for order in item_data.m_SellOrders:
-      order_volume = order.m_Volume
-      new_considered_volume = considered_volume + order_volume
-      new_considered_volume_pct = new_considered_volume / total_volume
-      if new_considered_volume_pct > volume_pct:
+      order_count = order.m_ItemCount
+      new_considered_count = considered_count + order_count
+      if new_considered_count > item_count:
         should_break = True
-        sub_volume_pct = new_considered_volume_pct - volume_pct
-        sub_volume = item_data.m_SellOrderVolume * sub_volume_pct
-        new_considered_volume -= sub_volume
-        order_volume -= sub_volume
-      considered_volume = new_considered_volume
-      considered_price = considered_price + order.m_Price * order_volume
+        sub_volume = new_considered_count - item_count
+        new_considered_count -= sub_volume
+        order_count -= sub_volume
+      considered_count = new_considered_count
+      considered_price = considered_price + order.m_Price * order_count
       if should_break:
         break
     
-    if considered_volume > CSECommon.ZERO_TOL:
-      mean_price = considered_price / considered_volume
+    if considered_count > CSECommon.ZERO_TOL:
+      mean_price = considered_price / considered_count
     
     return mean_price
 
@@ -136,6 +135,9 @@ def ConvertRegionsOrdersScrapeToRegionMarketData(scrape : CSEScrapeHelper.Region
   recent_time_delta = timedelta(days=5)
   region_data = RegionData()
   region_data.m_RegionId = scrape.m_RegionId
+  current_date_time = datetime.now()
+  current_date_time_string = current_date_time.strftime("%H:%M:%S")
+  region_data.m_Time = current_date_time_string
   for item_id, order_dict_array in scrape.m_ItemIdToHistoryDictArray.items():
     item_data = ItemData()
     item_data.m_ItemId = item_id
@@ -185,7 +187,7 @@ def ConvertRegionsOrdersScrapeToRegionMarketData(scrape : CSEScrapeHelper.Region
         item_order.m_Price = price
       volume = order_dict.get('volume_remain')
       if volume:
-        item_order.m_Volume = volume
+        item_order.m_ItemCount = volume
       station_id = order_dict.get('location_id')
       if station_id:
         item_order.m_StationId = station_id
