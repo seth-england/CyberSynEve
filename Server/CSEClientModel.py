@@ -6,6 +6,29 @@ import json
 import CSEClientSettings
 import CSEUndercutResult
 
+class CSECharacterTransaction:
+  def __init__(self) -> None:
+    self.m_Date = ""
+    self.m_Buy = False
+    self.m_Quantity = 0
+    self.m_UnitPrice = 0
+    self.m_TotalPrice = 0
+    self.m_TypeId = 0
+    self.m_CharacterId = 0
+
+class UpdateClientResponse(CSEMessages.CSEMessageBase):
+  def __init__(self):
+    self.m_CharacterId = 0
+    self.m_AccessToken = ""
+    self.m_RefreshToken = ""
+    self.m_SystemId = 0
+    self.m_RegionId = 0
+    self.m_ShipId = 0
+    self.m_CharacterTransactions = list[CSECharacterTransaction]()
+    self.m_ProfitableQueryResult = CSEHTTP.CSEProfitableResult()
+    self.m_UndercutQueryResult = CSEUndercutResult.CSEUndercutResult()
+    self.m_MarketBalanceQueryResult = CSEHTTP.CSEMarketBalanceQueryResult()
+
 class CharacterOrder:
   def __init__(self) -> None:
     self.m_Duration = 0
@@ -25,6 +48,8 @@ class CharacterData:
     self.m_CharacterName = ""
     self.m_OrdersValueType = CharacterOrder
     self.m_Orders = list[self.m_OrdersValueType]()
+    self.m_TransactionsValueType = CSECharacterTransaction
+    self.m_Transactions = list[self.m_TransactionsValueType]
 
 class CSEClientData:
   def __init__(self) -> None:
@@ -43,6 +68,7 @@ class CSEClientData:
     self.m_CharacterIdToCharacterDataValueType = CharacterData
     self.m_CharacterIdToCharacterData = dict[int, self.m_CharacterIdToCharacterDataValueType]()
     self.m_UndercutResult = CSEUndercutResult.CSEUndercutResult()
+    self.m_MarketBalanceQueryResult = CSEHTTP.CSEMarketBalanceQueryResult()
 
 class ClientModel:
   def __init__(self) -> None:
@@ -148,7 +174,7 @@ class ClientModel:
     client_data.m_ExpiresDateString = message.m_ExpiresDateString
     client_data.m_UUID = message.m_UUID
 
-  def HandleUpdateClientResponse(self, message: CSEMessages.UpdateClientResponse):
+  def HandleUpdateClientResponse(self, message: UpdateClientResponse):
     client_data = self.m_CharacterIdToClientData.get(message.m_CharacterId)
     if client_data:
       client_data.m_AccessToken = message.m_AccessToken
@@ -166,6 +192,8 @@ class ClientModel:
           client_data.m_UndercutResult = message.m_UndercutQueryResult
       else:
         client_data.m_UndercutResult = message.m_UndercutQueryResult
+      client_data.m_MarketBalanceQueryResult = message.m_MarketBalanceQueryResult
+    
   
   def HandleSetClientSettings(self, message: CSEMessages.SetClientSettings):
     client_data = self.GetClientByUUID(message.m_UUID)

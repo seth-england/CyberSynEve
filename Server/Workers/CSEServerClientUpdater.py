@@ -19,6 +19,7 @@ import Queries.CSEProfitableQuery as CSEProfitableQuery
 import CSEClientSettings
 import CSEScrapeHelper
 import Queries.CSEUndercutQuery as CSEUndercutQuery
+import Queries.CSEMarketBalanceQuery as CSEMarketBalanceQuery
 
 class ClientUpdater:
   def __init__(self) -> None:
@@ -42,7 +43,7 @@ def Main(updater : ClientUpdater):
       message = updater.m_ServerToSelfQueue.get_nowait()
       if type(message) is CSEMessages.CSEMessageUpdateClient:
         update_message : CSEMessages.CSEMessageUpdateClient = message
-        response = CSEMessages.UpdateClientResponse()
+        response = CSEClientModel.UpdateClientResponse()
         response.m_CharacterId = update_message.m_CharacterId
         response.m_AccessToken = update_message.m_AccessToken
         response.m_RefreshToken = update_message.m_RefreshToken
@@ -72,6 +73,35 @@ def Main(updater : ClientUpdater):
         res = CSECommon.DecodeJsonFromURL(ship_url, params=query)
         if res:
           response.m_ShipId = res.get('ship_type_id')
+
+        # Get the character's transactions
+        transactions_url = f'{CSECommon.EVE_SERVER_ROOT}characters/{update_message.m_CharacterId}/wallet/transactions/'
+        query = {'character_id': response.m_CharacterId, 'token' : response.m_AccessToken}
+        res = CSECommon.DecodeJsonFromURL(transactions_url, params=query)
+        if res:
+          for transaction_json in res:
+            new_trans = CSEClientModel.CSECharacterTransaction()
+            date = transaction_json.get('date')
+            if date:
+              new_trans.m_Date = date
+            buy = transaction_json.get('is_buy')
+            if buy:
+              new_trans.m_Buy = buy
+            quantity = transaction_json.get('quantity')
+            if quantity:
+              new_trans.m_Quantity = quantity
+            unit_price = transaction_json.get('unit_price')
+            if unit_price:
+              new_trans.m_UnitPrice = unit_price
+            new_trans.m_TotalPrice = new_trans.m_UnitPrice * new_trans.m_Quantity
+            type_id = transaction_json.get('type_id')
+            if type_id:
+              new_trans.m_TypeId = type_id
+            char_id = transaction_json.get('client_id')
+            if char_id:
+              new_trans.m_CharacterId = char_id
+            response.m_CharacterTransactions.append(new_trans)
+          response.m_MarketBalanceQueryResult = CSEMarketBalanceQuery.Query(response.m_CharacterTransactions, updater.m_ItemModel)           
 
         # Run profitable query
         client = updater.m_ClientModel.GetClientByCharacterId(response.m_CharacterId)

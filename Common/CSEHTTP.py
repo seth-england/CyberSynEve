@@ -2,6 +2,11 @@ import CSECommon
 import CSEClientSettings
 import CSEUndercutResult
 
+class CSEMarketBalanceQueryResult:
+  def __init__(self) -> None:
+    self.m_Valid = False
+    self.m_Balance = 0
+
 class CSEProfitableResultEntry:
   def __init__(self) -> None:
     self.m_Valid = False
@@ -70,3 +75,12 @@ class UndercutResponse:
     self.m_UUID = ""
     self.m_CharacterId = 0
     self.m_Result = CSEUndercutResult.CSEUndercutResult()
+
+class MarketBalanceRequest:
+  def __init__(self) -> None:
+    self.m_UUID = ""
+
+class MarketBalanceResponse:
+  def __init__(self) -> None:
+    self.m_UUID = ""
+    self.m_Result = CSEMarketBalanceQueryResult()

@@ -87,6 +87,7 @@ while True:
   print("Select an option below: ") 
   print("1) Find a profitable route")
   print("2) Find undercuts")
+  print("3) Market balance")
   user_input = input()
 
   # Profitable query 
@@ -141,5 +142,18 @@ while True:
          print("Unable to retrieve undercut results from server. The server may still be working.")
     else:
       print("Unable to retrieve undercut results from server. The server may still be working.")
-
+  elif user_input.find('3') > -1:
+    request = CSEHTTP.MarketBalanceRequest()
+    request.m_UUID = client.m_UUID
+    request_json = CSECommon.ObjectToJsonString(request)
+    res_json = CSECommon.DecodeJsonFromURL(CSECommon.SERVER_MARKET_BALANCE_URL, json=request_json)
+    if res_json:
+      res = CSEHTTP.MarketBalanceResponse()
+      CSECommon.FromJson(res, res_json)
+      if res.m_Result.m_Valid:
+        print(f'Balance of recent market transactions is: {res.m_Result.m_Balance:.1f}')
+      else:
+         print("Unable to retrieve undercut results from server. The server may still be working.")
+    else:
+       print("Unable to retrieve undercut results from server. The server may still be working.")
   continue

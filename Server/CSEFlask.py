@@ -133,6 +133,22 @@ def Undercut():
       return "", CSECommon.NOT_FOUND_CODE
   return "", CSECommon.NOT_FOUND_CODE
 
+@app.route(CSECommon.SERVER_MARKET_BALANCE_ENDPOINT)
+def MarketBalance():
+  with server.m_LockFlask:
+    dict = json.loads(request.json)
+    http_request = CSEHTTP.MarketBalanceRequest()
+    CSECommon.FromJson(http_request, dict)
+    response = CSEHTTP.MarketBalanceResponse()
+    client = server.m_ClientModel.GetClientByUUID(http_request.m_UUID)
+    if client:
+      response.m_UUID = http_request.m_UUID
+      response.m_Result = client.m_MarketBalanceQueryResult
+      return CSECommon.ObjectToJsonString(response), CSECommon.OK_CODE
+    else:
+      return "", CSECommon.NOT_FOUND_CODE
+  return "", CSECommon.NOT_FOUND_CODE
+
 server.m_Thread = threading.Thread(target=CSEServer.Main, args=(server,))
 server.m_Thread.start()
 print("CSEServer STARTED SERVER LOOP")
