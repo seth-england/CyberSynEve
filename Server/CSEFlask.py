@@ -33,7 +33,8 @@ server = CSEServer.CSEServer()
 def Auth():
   with server.m_LockFlask:
     code = request.args.get('code')
-    uuid = request.args.get('state')
+    state : str = request.args.get('state')
+    uuid, char_type = state.split()
     url_encoded = {'grant_type' : 'authorization_code', 'code' : code}
     user_and_pass = CSECommon.CLIENT_ID + ':' + CLIENT_SECRET
     user_and_pass = user_and_pass.encode("utf-8")
@@ -50,42 +51,34 @@ def Auth():
     res = requests.get(CSECommon.EVE_VERIFY, headers=header, data=query)
     if res.ok:
       json_content = json.loads(res.content)
-      new_client_message = CSEMessages.CSEMessageNewClientAuth()
+      new_client_message = CSEMessages.CSEMessageNewCharAuth()
       new_client_message.m_CharacterId = json_content.get('CharacterID')
       new_client_message.m_CharacterName = json_content.get('CharacterName')
       new_client_message.m_AccessToken = access_token
       new_client_message.m_RefreshToken = refresh_token
       new_client_message.m_ExpiresDateString = json_content.get('ExpiresOn')
       new_client_message.m_UUID = uuid
+      new_client_message.m_Type = char_type
       server.m_MsgSystem.QueueModelUpdateMessage(new_client_message)
-      server.ScheduleClientUpdate(new_client_message.m_CharacterId)
+      server.ScheduleClientUpdate(new_client_message.m_UUID)
 
     return "", CSECommon.OK_CODE
-
-@app.route(CSECommon.SERVER_CHECK_LOGIN_ENDPOINT)
-def CheckLogin():
-  with server.m_LockFlask:
-    dict = json.loads(request.json)
-    http_request = CSEHTTP.CheckLoginRequest()
-    CSECommon.SetObjectFromDict(http_request, dict)
-    res = CSEHTTP.CheckLoginRequestResponse()
-    client = server.m_ClientModel.GetClientByUUID(http_request.m_UUID)
-    if client:
-      res.m_UUID = client.m_UUID
-      res.m_CharacterID = client.m_CharacterId
-      res.m_CharacterName = client.m_CharacterName
-      res.m_LoggedIn = True
-    return jsonify(res.__dict__), CSECommon.OK_CODE
   
 @app.route(CSECommon.SERVER_PING_ENDPOINT)
 def Ping():
-  with server.m_LockFlask:
+   with server.m_LockFlask:
     dict = json.loads(request.json)
     http_request = CSEHTTP.PingRequest()
     CSECommon.FromJson(http_request, dict)
     client = server.m_ClientModel.GetClientByUUID(http_request.m_UUID)
     if client:
-      server.ScheduleClientUpdate(client.m_CharacterId)
+      server.ScheduleClientUpdate(http_request.m_UUID)
+    else:
+      new_client_message = CSEMessages.CSEMessageNewClient()
+      new_client_message.m_UUID = http_request.m_UUID
+      new_client_message.m_Settings = http_request.m_Settings
+      server.m_MsgSystem.QueueModelUpdateMessage(new_client_message)
+      server.ScheduleClientUpdate(http_request.m_UUID)
     return "", CSECommon.OK_CODE
   
 @app.route(CSECommon.SERVER_PROFITABLE_ENDPOINT)
@@ -100,7 +93,7 @@ def Profitable():
       res.m_UUID = http_request.m_UUID
       res.m_ProfitableResult = client.m_ProfitableResult
       res_json = CSECommon.ObjectToJsonDict(res)
-      server.ScheduleClientUpdate(client.m_CharacterId)
+      server.ScheduleClientUpdate(http_request.m_UUID)
       return jsonify(res_json), CSECommon.OK_CODE
     return "", CSECommon.NOT_FOUND_CODE
   
@@ -123,7 +116,7 @@ def Undercut():
     http_request = CSEHTTP.UndercutRequest()
     CSECommon.FromJson(http_request, dict)
     response = CSEHTTP.UndercutResponse()
-    client = server.m_ClientModel.GetClientByCharacterId(http_request.m_CharacterId)
+    client = server.m_ClientModel.GetClientByUUID(http_request.m_UUID)
     if client:
       response.m_UUID = http_request.m_UUID
       response.m_CharacterId = http_request.m_CharacterId

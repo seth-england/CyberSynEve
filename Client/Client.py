@@ -12,18 +12,29 @@ import threading
 import CSEClientSettings
 import CSEFileSystem
 
+class CSEClientCharacter:
+  def __init__(self) -> None:
+    self.m_CharacterId = 0
+    self.m_CharacterName = ""
+    self.m_Type = CSECommon.CHAR_TYPE_INVALID
+
+class CSEClientSerializedValues:
+  def __init__(self) -> None:
+    self.m_UUID = CSECommon.INVALID_UUID
+
 class CSEClient:
   def __init__(self) -> None:
-    self.m_UUID = str(uuid.uuid4()) # ID representing a unique instance of a running client
+    self.m_SerializedValues = CSEClientSerializedValues()
+    self.m_Characters = list[CSEClientCharacter]()
+    self.m_UUID = CSECommon.INVALID_UUID # ID representing a unique instance of a running client
     self.m_LoggedIn = False
-    self.m_CharacterID = 0
+    self.m_CharacterID = 0 # Main character
     self.m_CharacterName = ""
     self.m_PingThread : threading.Thread() = None
     self.m_ClientSettings = CSEClientSettings.Settings()
-client = CSEClient()
+    self.m_Lock = threading.Lock()
 
-def PingThread():
-  while True:
+  def PingServer(self):
     request = CSEHTTP.PingRequest()
     request.m_UUID = client.m_UUID
     request_json = json.dumps(request.__dict__)
@@ -31,16 +42,68 @@ def PingThread():
       requests.get(CSECommon.SERVER_PING_URL, json=request_json)
     except:
       pass
-    time.sleep(CSECommon.PING_PERIOD)
 
+  def RetrieveCharacters(self):
+    self.m_Characters.clear()
+    request = CSEHTTP.CharactersRequest()
+    request.m_UUID = self.m_UUID
+    request_json = json.dumps(request.__dict__)
+    res_dict = None
+    for i in range(0, CSECommon.REASONABLE_ATTEMPTS):
+      res_dict = CSECommon.DecodeJsonFromURL(CSECommon.SERVER_CHARACTERS_URL, json=request_json)
+      if res_dict:
+        break
+    if res_dict:
+      res = CSEHTTP.CharactersResponse()
+      CSECommon.FromJson(res, res_dict)
+      for id, name, type in res.m_CharacterIds, res.m_CharaterNames, res.m_CharacterTypes
+        new_char = CSEClientCharacter()
+        new_char.m_CharacterId = id
+        new_char.m_CharacterName = name
+        new_char.m_Type = type
+
+client = CSEClient()
+
+def PingThread():
+  while True:
+    with client.m_Lock:
+      client.PingServer()
+      time.sleep(CSECommon.PING_PERIOD)
+
+# Read the client serialized values from the disk
+CSEFileSystem.ReadObjectFromFileJson(CSECommon.CLIENT_FILE_PATH, client.m_SerializedValues)
+# Create UUID if one is not serialized
+if client.m_SerializedValues.m_UUID == CSECommon.INVALID_UUID:
+  client.m_SerializedValues.m_UUID = str(uuid.uuid4())
+client.m_UUID = client.m_SerializedValues.m_UUID
+# Write the client serialized values back to the disk
+CSEFileSystem.WriteObjectJsonToFilePath(CSECommon.CLIENT_FILE_PATH, client.m_SerializedValues)
+
+# Read client settings
 CSEFileSystem.ReadObjectFromFileJson(CSECommon.CLIENT_SETTINGS_FILE_PATH, client.m_ClientSettings)
 CSEFileSystem.WriteObjectJsonToFilePath(CSECommon.CLIENT_SETTINGS_FILE_PATH, client.m_ClientSettings)
 
+# Tell the server about ourselves
+print("Saying hello to the server...")
+request = CSEHTTP.HelloRequest()
+request.m_UUID = client.m_UUID
+request_json = json.dumps(request.__dict__)
+res_dict = CSECommon.DecodeJsonFromURL(CSECommon.SERVER_HELLO_URL, json=request_json)
+if res_dict:
+  print("Retrieving characters...")
+
+  # Get our characters from the server
+  success = client.RetrieveCharacters()
+else:
+  print("The server does not appear to be running or is hung, please try later.")
+  exit(0)
+
 # Log the user in
-redirect_uri = urllib.parse.quote_plus(CSECommon.SERVER_AUTH_URL)
-scope = urllib.parse.quote_plus(CSECommon.SCOPES)
-param_string = f'response_type=code&redirect_uri={redirect_uri}&client_id={CSECommon.CLIENT_ID}&scope={scope}&state={client.m_UUID}'
-webbrowser.open("https://login.eveonline.com/v2/oauth/authorize/?"+param_string)
+#redirect_uri = urllib.parse.quote_plus(CSECommon.SERVER_AUTH_URL)
+#scope = urllib.parse.quote_plus(CSECommon.SCOPES)
+#param_string = f'response_type=code&redirect_uri={redirect_uri}&client_id={CSECommon.CLIENT_ID}&scope={scope}&state={client.m_UUID}'
+#webbrowser.open("https://login.eveonline.com/v2/oauth/authorize/?"+param_string)
+
 
 # Wait for the user to authorize and for the server to recognize that authorization
 print("Logging you in...")
@@ -61,8 +124,6 @@ while attempts_remaning > 0 and not client.m_LoggedIn:
       CSECommon.PostAndDecodeJsonFromURL(CSECommon.SERVER_CLIENT_SETTINGS_URL, json=request_json)
       print(f'Welcome {res.m_CharacterName}')
       client.m_UUID = res.m_UUID
-      client.m_CharacterID = res.m_CharacterID
-      client.m_CharacterName = res.m_CharacterName
       client.m_LoggedIn = True
     else:
       print(f'Logging in... ({attempts_remaning : .0f} attempts remaining)')
@@ -142,6 +203,7 @@ while True:
          print("Unable to retrieve undercut results from server. The server may still be working.")
     else:
       print("Unable to retrieve undercut results from server. The server may still be working.")
+  # Market balance query
   elif user_input.find('3') > -1:
     request = CSEHTTP.MarketBalanceRequest()
     request.m_UUID = client.m_UUID

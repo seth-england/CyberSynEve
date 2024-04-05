@@ -21,7 +21,7 @@ class CSEMessageScrapeRegionOrdersResult(CSEMessageBase):
     self.m_RegionName = ""
     self.m_MarketRegionData = None
 
-class CSEMessageNewClientAuth(CSEMessageBase):
+class CSEMessageNewCharAuth(CSEMessageBase):
   def __init__(self):
     super().__init__()
     self.m_CharacterId = 0
@@ -30,12 +30,17 @@ class CSEMessageNewClientAuth(CSEMessageBase):
     self.m_RefreshToken = ""
     self.m_ExpiresDateString = ""
     self.m_UUID = ""
+    self.m_Type = ""
+
+class CSEMessageNewClient(CSEMessageBase):
+  def __init__(self):
+    super().__init__()
+    self.m_UUID = ""
+    self.m_Settings = CSEClientSettings.Settings()
 
 class CSEMessageUpdateClient(CSEMessageBase):
   def __init__(self):
-    self.m_CharacterId = 0
-    self.m_AccessToken = ""
-    self.m_RefreshToken = ""
+    self.m_UUID = ""
 
 class CheckClientLogin(CSEMessageBase):
   def __init__(self):

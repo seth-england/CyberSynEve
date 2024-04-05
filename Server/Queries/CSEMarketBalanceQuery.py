@@ -1,8 +1,8 @@
-import CSEClientModel
 import CSEHTTP
 import CSEItemModel
+import CSECharacterModel
 
-def Query(character_transactions : list[CSEClientModel.CSECharacterTransaction], item_model : CSEItemModel.ItemModel) -> CSEHTTP.CSEMarketBalanceQueryResult:
+def Query(character_transactions : list[CSECharacterModel.CSECharacterTransaction], item_model : CSEItemModel.ItemModel) -> CSEHTTP.CSEMarketBalanceQueryResult:
   result = CSEHTTP.CSEMarketBalanceQueryResult()
   result.m_Valid = True
   excluded_item_names = {'PLEX', 'Large Skill Injector'}

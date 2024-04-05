@@ -25,6 +25,8 @@ SERVER_UNDERCUT_ENDPOINT = '/undercut'
 SERVER_UNDERCUT_URL = SERVER_URL + SERVER_UNDERCUT_ENDPOINT
 SERVER_MARKET_BALANCE_ENDPOINT = '/marketbalance'
 SERVER_MARKET_BALANCE_URL = SERVER_URL + SERVER_MARKET_BALANCE_ENDPOINT
+SERVER_CHARACTERS_ENDPOINT = '/characters'
+SERVER_CHARACTERS_URL = SERVER_URL + SERVER_CHARACTERS_ENDPOINT 
 
 # Eve server
 import ProjectSettings
@@ -57,6 +59,13 @@ SCOPES = 'publicData esi-location.read_location.v1 esi-location.read_ship_type.v
 STANDARD_SLEEP = .1
 PING_PERIOD = 15
 INF = float("inf")
+INVALID_UUID = ""
+REASONABLE_ATTEMPTS = 5
+
+CHAR_TYPE_HAULER = "HAULER"
+CHAR_TYPE_TRADE_BOT = "TRADE_BOT"
+CHAR_TYPE_INVALID = "INVALID"
+CHAR_TYPES = [ CHAR_TYPE_HAULER, CHAR_TYPE_TRADE_BOT, CHAR_TYPE_INVALID ]
 
 #Files
 PROJECT_ROOT_PATH = pathlib.Path(__file__).parent.parent.as_posix()
@@ -65,9 +74,11 @@ SCRAPE_FILE_PATH = PROJECT_ROOT_PATH + '/Server/Scrape' + SERIALIZED_FILE_EXT
 ROUTES_FILE_PATH = PROJECT_ROOT_PATH + '/Server/Routes' + SERIALIZED_FILE_EXT
 CLIENT_MODEL_FILE_PATH = PROJECT_ROOT_PATH + '/Server/ClientModel' + SERIALIZED_FILE_EXT
 MARKET_MODEL_FILE_PATH = PROJECT_ROOT_PATH + '/Server/MarketModel' + SERIALIZED_FILE_EXT
+CHARACTER_MODEL_FILE_PATH = PROJECT_ROOT_PATH + '/Server/MarketModel' + SERIALIZED_FILE_EXT
 REGION_MARKET_SCRAPES_DIR = PROJECT_ROOT_PATH + '/Server/Scrapes/RegionMarkets/'
 BACKUP_FILE_SUFFIX = 'BACK'
 CLIENT_SETTINGS_FILE_PATH = 'ClientSettings' + SERIALIZED_FILE_EXT
+CLIENT_FILE_PATH = 'Client' + SERIALIZED_FILE_EXT
 
 def SetObjectFromDict(self, dictionary):
   for key, value in dictionary.items():
@@ -173,7 +184,7 @@ class GenericEncoder(JSONEncoder):
         value = getattr(obj, member_name)
         if member_name.startswith('__'):
           continue
-        elif inspect.ismethod(value):
+        elif inspect.ismethod(value) or inspect.isbuiltin(value):
           continue
         if not member_name.startswith('__') and not inspect.ismethod(value) and not type(value) is type:
           result_dict[member_name] = value
@@ -199,7 +210,13 @@ def FromJsonTypedDictHelper(o : dict, json_dict : dict, dict_type):
   for key, value in json_dict.items():
     value_object = dict_type()
     FromJson(value_object, value)
-    o[int(key)] = value_object
+    if type(key) == str:
+      if key.isnumeric():
+        o[int(key)] = value_object
+      else:
+        o[key] = value_object
+    else:
+      o[key] = value_object
 
 def FromJsonListHelper(o : list, json_list : list):
   for value in json_list:

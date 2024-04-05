@@ -30,6 +30,7 @@ import Workers.CSEServerFileWriter as CSEServerFileWriter
 import CSEServerMessageSystem
 import Workers.CSEServerFileWriter as CSEServerFileWriter
 import CSEServerModelUpdateHelper
+import CSECharacterModel
 from flask import Flask, request
 from base64 import b64encode
 from telnetlib import NOP
@@ -52,14 +53,13 @@ class CSEServer:
     self.m_MsgSystem = CSEServerMessageSystem.g_MessageSystem
     self.m_FileWriter : CSEServerFileWriter.FileWriter = None
     self.m_ModelUpdateQueue = queue.Queue()
+    self.m_CharacterModel = CSECharacterModel.Model()
 
-  def ScheduleClientUpdate(self, character_id : int):
-      client_data = self.m_ClientModel.GetClientByCharacterId(character_id)
+  def ScheduleClientUpdate(self, uuid : str):
+      client_data = self.m_ClientModel.GetClientByUUID(uuid)
       if client_data:
         message = CSEMessages.CSEMessageUpdateClient()
-        message.m_CharacterId = client_data.m_CharacterId
-        message.m_AccessToken = client_data.m_AccessToken
-        message.m_RefreshToken = client_data.m_RefreshToken
+        message.m_UUID = uuid
         self.m_ClientUpdater.m_ServerToSelfQueue.put_nowait(message)
 
 def WriteScrape(scrape):
@@ -164,10 +164,15 @@ async def CSEServerLoopMain(server_data : CSEServer):
   CSELogging.Log("READING MARKET MODEL FROM FILE", __file__)
   CSEFileSystem.ReadObjectFromFileJson(CSECommon.MARKET_MODEL_FILE_PATH, server_data.m_MarketModel)
 
+  # Deserialize character model
+  CSELogging.Log("CREATING CHARACTER MODEL", __file__)
+  CSEFileSystem.ReadObjectFromFileJson(CSECommon.CHARACTER_MODEL_FILE_PATH, server_data.m_CharacterModel)
+
   # Create item model
-  CSELogging.Log("CREATE ITEM MODEL", __file__)
+  CSELogging.Log("CREATING ITEM MODEL", __file__)
   server_data.m_ItemModel.CreateFromScrape(server_data.m_Scrape.m_ItemsScrape)
 
+  CSELogging.Log("STARTING THREADS", __file__)
   # Start scraping orders
   server_data.m_OrderScraper = CSEServerOrderScraper.OrderScraper()
   server_data.m_OrderScraper.m_ServerToSelfQueue = queue.Queue()
@@ -184,13 +189,14 @@ async def CSEServerLoopMain(server_data : CSEServer):
   server_data.m_ClientUpdater.m_MapModel = copy.deepcopy(server_data.m_MapModel)
   server_data.m_ClientUpdater.m_MarketModel = copy.deepcopy(server_data.m_MarketModel)
   server_data.m_ClientUpdater.m_ClientModel = copy.deepcopy(server_data.m_ClientModel)
+  server_data.m_ClientUpdater.m_CharacterModel = copy.deepcopy(server_data.m_CharacterModel)
   server_data.m_ClientUpdater.m_MsgSystem = server_data.m_MsgSystem
   server_data.m_ClientUpdater.m_ItemModel = server_data.m_ItemModel
   server_data.m_ClientUpdater.m_Thread = threading.Thread(target=CSEServerClientUpdater.Main, args=(server_data.m_ClientUpdater,))
   server_data.m_ClientUpdater.m_Thread.start()
 
   # Start serializing files
-  server_data.m_FileWriter = CSEServerFileWriter.FileWriter(copy.deepcopy(server_data.m_ClientModel), copy.deepcopy(server_data.m_MapModel), copy.deepcopy(server_data.m_MarketModel), server_data.m_MsgSystem)
+  server_data.m_FileWriter = CSEServerFileWriter.FileWriter(copy.deepcopy(server_data.m_ClientModel), copy.deepcopy(server_data.m_MapModel), copy.deepcopy(server_data.m_MarketModel), copy.deepcopy(server_data.m_CharacterModel), server_data.m_MsgSystem)
   server_data.m_FileWriter.m_Thread = threading.Thread(target=CSEServerFileWriter.FileWriter.Main, args=(server_data.m_FileWriter,))
   server_data.m_FileWriter.m_Thread.start()
 
@@ -211,7 +217,7 @@ async def CSEServerLoopMain(server_data : CSEServer):
       else:
         server_data.m_RegionScrapeIndex = 0
     
-    CSEServerModelUpdateHelper.ApplyAllUpdates(server_data.m_ModelUpdateQueue, server_data.m_MarketModel, server_data.m_ClientModel, server_data.m_MapModel)
+    CSEServerModelUpdateHelper.ApplyAllUpdates(server_data.m_ModelUpdateQueue, server_data.m_MarketModel, server_data.m_ClientModel, server_data.m_MapModel, server_data.m_CharacterModel)
 
     # Let http messages get processed
     server_data.m_LockFlask.release()

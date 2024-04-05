@@ -50,6 +50,7 @@ class CheckLoginRequestResponse:
 class PingRequest:
   def __init__(self):
     self.m_UUID = ""
+    self.m_Settings = CSEClientSettings.Settings()
 
 class GetProfitableRoute:
   def __init__(self):
@@ -84,3 +85,14 @@ class MarketBalanceResponse:
   def __init__(self) -> None:
     self.m_UUID = ""
     self.m_Result = CSEMarketBalanceQueryResult()
+
+class CharactersRequest:
+  def __init__(self) -> None:
+    self.m_UUID = ""
+
+class CharactersResponse:
+  def __init__(self) -> None:
+    self.m_UUID = ""
+    self.m_CharacterIds = list[int]()
+    self.m_CharaterNames = list[str]()
+    self.m_CharacterTypes = list[str]()
