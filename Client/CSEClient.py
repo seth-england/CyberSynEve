@@ -58,7 +58,7 @@ class CSEClient:
       return
 
   def TransitionProfitable(self):
-    self.m_State = CLIENT_STATE_MAIN
+    self.m_State = CLIENT_STATE_PROFITABLE
     print("Fetching from server...")
     request = CSEHTTP.GetProfitableRoute()
     request.m_UUID = self.m_UUID
@@ -88,6 +88,8 @@ class CSEClient:
       else:
         print("Not found.")
         self.TransitionMain()
+    else:
+      self.TransitionMain()
   
   def TransitionBalance(self):    
     request = CSEHTTP.MarketBalanceRequest()
@@ -98,7 +100,7 @@ class CSEClient:
       res = CSEHTTP.MarketBalanceResponse()
       CSECommon.FromJson(res, res_json)
       if res.m_Result.m_Valid:
-        print(f'Balance of recent market transactions is: {res.m_Result.m_Balance:.1f}')
+        print(f'Balance of recent market transactions is: {res.m_Result.m_Balance:,.1f}')
       else:
          print("Unable to retrieve undercut results from server. The server may still be working.")
     else:
@@ -131,6 +133,7 @@ class CSEClient:
   def PingServer(self):
     request = CSEHTTP.PingRequest()
     request.m_UUID = self.m_UUID
+    request.m_Settings = self.m_ClientSettings
     request_json = CSECommon.ObjectToJsonString(request)
     try: 
       requests.get(CSECommon.SERVER_PING_URL, json=request_json)

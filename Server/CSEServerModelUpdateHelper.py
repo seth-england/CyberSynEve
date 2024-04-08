@@ -66,5 +66,10 @@ def ApplyAllUpdates(q : queue.Queue, market_model : CSEMarketModel.MarketModel, 
         char_model.UpdateCharacter(msg)
         results.m_AppliedAnyUpdate = True
         results.m_AppliedCharacterModelUpdate = True
+    elif type(msg) == CSEMessages.CSEMessageClientPing:
+      if client_model:
+        client_model.HandleClientPing(msg)
+        results.m_AppliedAnyUpdate = True
+        results.m_AppliedClientModelUpdate = True
  
   return results

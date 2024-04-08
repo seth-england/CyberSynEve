@@ -72,6 +72,10 @@ def Ping():
     CSECommon.FromJson(http_request, dict)
     client = server.m_ClientModel.GetClientByUUID(http_request.m_UUID)
     if client:
+      ping_message = CSEMessages.CSEMessageClientPing()
+      ping_message.m_UUID = http_request.m_UUID
+      ping_message.m_Settings = http_request.m_Settings
+      server.m_MsgSystem.QueueModelUpdateMessage(ping_message)
       server.ScheduleClientUpdate(http_request.m_UUID)
     else:
       new_client_message = CSEMessages.CSEMessageNewClient()

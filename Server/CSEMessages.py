@@ -38,6 +38,12 @@ class CSEMessageNewClient(CSEMessageBase):
     self.m_UUID = ""
     self.m_Settings = CSEClientSettings.Settings()
 
+class CSEMessageClientPing(CSEMessageBase):
+  def __init__(self):
+    super().__init__()
+    self.m_UUID = ""
+    self.m_Settings = CSEClientSettings.Settings()
+
 class CSEMessageUpdateClient(CSEMessageBase):
   def __init__(self):
     self.m_UUID = ""

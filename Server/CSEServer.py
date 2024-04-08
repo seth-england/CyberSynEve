@@ -41,7 +41,7 @@ class CSEServer:
     self.m_Connector : aiohttp.TCPConnector = None
     self.m_ClientSession : aiohttp.ClientSession = None
     self.m_MapModel = CSEMapModel.MapModel()
-    self.m_RegionScrapeIndex = 28
+    self.m_RegionScrapeIndex = 0
     self.m_MarketModel = CSEMarketModel.MarketModel()
     self.m_OrderScraper : CSEServerOrderScraper.OrderScraper = None
     self.m_ItemModel = CSEItemModel.ItemModel()

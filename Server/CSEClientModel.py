@@ -91,3 +91,8 @@ class ClientModel:
       client_data.m_UUID = message.m_UUID
       client_data.m_Settings = message.m_Settings
       self.m_UUIDToClientData[message.m_UUID] = client_data
+
+  def HandleClientPing(self, message: CSEMessages.CSEMessageClientPing):
+    client_data = self.m_UUIDToClientData.get(message.m_UUID)
+    if client_data:
+      client_data.m_Settings = message.m_Settings
