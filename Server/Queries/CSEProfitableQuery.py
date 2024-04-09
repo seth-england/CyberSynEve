@@ -59,10 +59,10 @@ def ProfitableQuery(map_model : CSEMapModel.MapModel,
     item_count_capacity = CSECommon.INF
     if max_ship_volume:
       item_count_capacity = int(max_ship_volume / item_data.m_Volume)
-    potential_entry = CSEProfitableResultEntry()
 
     # For each region check profitability for that region
     for end_region_id in end_region_ids:
+      potential_entry = CSEProfitableResultEntry()
       # Sanity check
       if end_region_id == starting_region_id:
         continue
@@ -97,24 +97,23 @@ def ProfitableQuery(map_model : CSEMapModel.MapModel,
         continue
       if rate_of_profit < min_profit_rate:
         continue
-      if not potential_entry.m_Valid or rate_of_profit > potential_entry.m_RateOfProfit:
-        potential_entry.m_Valid = True
-        potential_entry.m_ItemName = item_data.m_Name
-        potential_entry.m_ItemId = item_data.m_Id
-        potential_entry.m_Profit = profit
-        potential_entry.m_BuyRegionId = start_region.m_Id
-        potential_entry.m_BuyRegionName = start_region.m_Name
-        potential_entry.m_BuyPrice = buy_price
-        potential_entry.m_BuyPricePerUnit = buy_price / item_count
-        potential_entry.m_BuyRegionSellOrderCount = market_model.GetSellOrderCount(starting_region_id, item_id)
-        potential_entry.m_ItemCount = item_count
-        potential_entry.m_RateOfProfit = rate_of_profit
-        potential_entry.m_SellPrice = sell_price
-        potential_entry.m_SellPricePerUnit = sell_price / item_count
-        potential_entry.m_SellRegionId = end_region_id
-        potential_entry.m_SellRegionName = end_region.m_Name
-        potential_entry.m_SellRegionSellOrderCount = market_model.GetSellOrderCount(end_region_id, item_id)
-    if potential_entry.m_Valid:
+      
+      potential_entry.m_Valid = True
+      potential_entry.m_ItemName = item_data.m_Name
+      potential_entry.m_ItemId = item_data.m_Id
+      potential_entry.m_Profit = profit
+      potential_entry.m_BuyRegionId = start_region.m_Id
+      potential_entry.m_BuyRegionName = start_region.m_Name
+      potential_entry.m_BuyPrice = buy_price
+      potential_entry.m_BuyPricePerUnit = buy_price / item_count
+      potential_entry.m_BuyRegionSellOrderCount = market_model.GetSellOrderCount(starting_region_id, item_id)
+      potential_entry.m_ItemCount = item_count
+      potential_entry.m_RateOfProfit = rate_of_profit
+      potential_entry.m_SellPrice = sell_price
+      potential_entry.m_SellPricePerUnit = sell_price / item_count
+      potential_entry.m_SellRegionId = end_region_id
+      potential_entry.m_SellRegionName = end_region.m_Name
+      potential_entry.m_SellRegionSellOrderCount = market_model.GetSellOrderCount(end_region_id, item_id)
       profitable_entries.append(potential_entry)
 
   # Sort the profitable entries

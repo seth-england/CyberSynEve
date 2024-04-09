@@ -131,6 +131,7 @@ class CSEClient:
       self.TransitionMain()
 
   def PingServer(self):
+    CSEFileSystem.ReadObjectFromFileJson(CSECommon.CLIENT_SETTINGS_FILE_PATH, self.m_ClientSettings)
     request = CSEHTTP.PingRequest()
     request.m_UUID = self.m_UUID
     request.m_Settings = self.m_ClientSettings
