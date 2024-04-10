@@ -65,6 +65,7 @@ class CharacterData:
     self.m_CharacterRegionId = None
     self.m_ShipID = None
     self.m_Type = CSECommon.CHAR_TYPE_INVALID
+    self.m_LoggedIn = True
 
 class Model:
   def __init__(self) -> None:
@@ -98,6 +99,7 @@ class Model:
       char_data.m_RefreshToken = message.m_RefreshToken
       char_data.m_ExpiresDateString = message.m_ExpiresDateString
       char_data.m_Type = message.m_Type
+      char_data.m_LoggedIn = True
 
   def HandleUpdateCharacterOrders(self, message : CSEMessages.UpdateCharacterOrders):
     character_data = self.GetCharDataById(message.m_CharacterId)
@@ -138,3 +140,8 @@ class Model:
       if volume_total:
         new_order.m_VolumeTotal = volume_total
       character_data.m_Orders.append(new_order)
+  
+  def HandleCharacterLoggedOut(self, message : CSEMessages.CharacterLoggedOut):
+    char_data = self.m_CharacterIdToCharData.get(message.m_CharacterId)
+    if char_data:
+      char_data.m_LoggedIn = False

@@ -61,6 +61,7 @@ PING_PERIOD = 15
 INF = float("inf")
 INVALID_UUID = ""
 REASONABLE_ATTEMPTS = 5
+FULL_PAGE_ORDER_COUNT = 1000
 
 CHAR_TYPE_HAULER = "HAULER"
 CHAR_TYPE_TRADE_BOT = "TRADE"
@@ -113,7 +114,7 @@ async def DecodeJsonAsyncHelper(session : aiohttp.ClientSession, url, **args):
       raise Exception("Too many errors from the server")
     elif res.status == NOT_FOUND_CODE:
       return None
-    elif res.start == BAD_PARAMS_CODE:
+    elif res.status == BAD_PARAMS_CODE:
       return None
     attempts += 1
   if not good_res is None:

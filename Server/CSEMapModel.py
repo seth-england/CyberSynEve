@@ -56,7 +56,7 @@ class MapModel:
     system_ids = list(self.m_SystemIdToSystem.keys())
     return system_ids
 
-  def GetRegionByIndex(self, index : int) -> CSERegionData or None:
+  def GetRegionByIndex(self, index : int) -> CSERegionData | None:
     key_list = list(self.m_RegionIdToRegion.keys())
     if index >= len(key_list):
       return None
@@ -64,7 +64,7 @@ class MapModel:
     value = self.m_RegionIdToRegion.get(key)
     return value
   
-  def GetRegionIdBySystemId(self, system_id : int) -> int or None:
+  def GetRegionIdBySystemId(self, system_id : int) -> int | None:
     system = self.m_SystemIdToSystem.get(system_id)
     if system is None:
       return None

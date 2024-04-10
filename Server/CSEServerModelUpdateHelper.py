@@ -71,5 +71,10 @@ def ApplyAllUpdates(q : queue.Queue, market_model : CSEMarketModel.MarketModel, 
         client_model.HandleClientPing(msg)
         results.m_AppliedAnyUpdate = True
         results.m_AppliedClientModelUpdate = True
+    elif type(msg) == CSEMessages.CharacterLoggedOut:
+      if char_model:
+        char_model.HandleCharacterLoggedOut(msg)
+        results.m_AppliedAnyUpdate = True
+        results.m_AppliedCharacterModelUpdate = True
  
   return results

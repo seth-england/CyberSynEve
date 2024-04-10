@@ -78,3 +78,9 @@ class UpdateCharacterOrders(CSEMessageBase):
     super().__init__()
     self.m_CharacterId = 0
     self.m_OrderDictArray = list[dict]()
+
+class CharacterLoggedOut(CSEMessageBase):
+  def __init__(self):
+    super().__init__()
+    self.m_ClientUUID = 0
+    self.m_CharacterId = 0
