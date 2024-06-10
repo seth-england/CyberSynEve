@@ -1,28 +1,24 @@
 # Handles passing messages via queues that can be read by all listeners
 
-import queue
-import threading
-
-class ModelUpdateQueueEntry:
-  def __init__(self, id : int, q : queue.Queue) -> None:
-    self.m_Id = id
-    self.m_Queue = q
+import multiprocessing
 
 class MessageSystem:
-  def __init__(self) -> None:
-    self.m_ModelUpdateQueues = list[ModelUpdateQueueEntry]()
-    self.m_Lock = threading.Lock()
+  def __init__(self, q_list, lock) -> None:
+    self.m_ModelUpdateQueues = q_list
+    self.m_Lock = lock
     pass
 
-  def RegisterForModelUpdateQueue(self, id : int, q : queue.Queue):
+  def RegisterForModelUpdateQueue(self, id : int, q):
     with self.m_Lock:
-      new_entry = ModelUpdateQueueEntry(id, q)
-      self.m_ModelUpdateQueues.append(new_entry)
+      self.m_ModelUpdateQueues.append(q)
 
   def QueueModelUpdateMessage(self, msg):
-    with self.m_Lock:
-      for queue_entry in self.m_ModelUpdateQueues:
-        queue_entry.m_Queue.put_nowait(msg)
+    try:
+      with self.m_Lock:
+        for q in self.m_ModelUpdateQueues:
+          q.put_nowait(msg)
+    except:
+      pass
 
-g_MessageSystem = MessageSystem()
+g_MessageSystem = None
     

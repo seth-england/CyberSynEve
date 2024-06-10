@@ -76,5 +76,10 @@ def ApplyAllUpdates(q : queue.Queue, market_model : CSEMarketModel.MarketModel, 
         char_model.HandleCharacterLoggedOut(msg)
         results.m_AppliedAnyUpdate = True
         results.m_AppliedCharacterModelUpdate = True
+    elif type(msg) == CSEMessages.SafetyUpdated:
+      if map_model:
+        map_model.HandleSafetyUpdated(msg)
+        results.m_AppliedAnyUpdate = True
+        results.m_AppliedMapModelUpdate = True
  
   return results

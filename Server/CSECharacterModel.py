@@ -75,6 +75,19 @@ class Model:
   def GetCharDataById(self, char_id : int) -> CharacterData | None:
     data = self.m_CharacterIdToCharData.get(char_id)
     return data
+  
+  def HasSellOrderForItemInRegion(self, char_id : int, item_id : int, region_id : int) -> bool:
+    char_data = self.GetCharDataById(char_id)
+    if char_data is None:
+      return False
+    
+    for order in char_data.m_Orders:
+      if order.m_IsBuyOrder:
+        continue
+      if order.m_RegionId == region_id and order.m_ItemTypeId == item_id:
+        return True
+
+    return False
 
   def UpdateCharacter(self, message: UpdateCharacterMessage):
     char_data = self.m_CharacterIdToCharData.get(message.m_CharacterId)

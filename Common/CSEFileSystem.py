@@ -42,7 +42,7 @@ def ReadObjectFromFileJsonHelper(file_path : str) -> dict or None:
     with open(file_path, "r") as scrape_file:
       object_dict = json.load(scrape_file)
       return object_dict
-  except FileNotFoundError:
+  except FileNotFoundError as e:
     CSELogging.Log(f'LOAD FROM {file_path} FAILURE COULD NOT OPEN FILE', __file__)
   except EOFError:
     CSELogging.Log(f'LOAD FROM {file_path} FAILURE REACHED UNEXPECTED END OF FILE', __file__)

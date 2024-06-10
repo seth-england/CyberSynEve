@@ -21,9 +21,12 @@ class ItemData:
   def __init__(self):
     self.m_ItemId = -1
     self.m_RecentVolume = 0
+    self.m_RecentLowPrice = 0
     self.m_RecentAveragePrice = 0
     self.m_RecentHighPrice = 0
     self.m_RecentOrderCount = 0
+    self.m_RecentSellVolumeEstimate = 0
+    self.m_RecentBuyVolumeEstimate = 0
     self.m_SellOrderVolume = 0
     self.m_BuyOrderVolume = 0
     self.m_BuyOrdersValueType = ItemOrder
@@ -37,6 +40,31 @@ class RegionData:
     self.m_ItemIDToRegionItemData = dict[int, ItemData]()
     self.m_RegionId = 0
     self.m_Time = ""
+
+class EstimateBuyAndSellOrderCountResult:
+  def __init__(self) -> None:
+    self.m_SellVolume : int = 0
+    self.m_BuyVolume : int = 0
+
+def EstimateBuyAndSellVolumeCounts(total_volume : int, low_price : float, avg_price : float, high_price : float) -> EstimateBuyAndSellOrderCountResult:
+  result = EstimateBuyAndSellOrderCountResult()
+  result.m_BuyVolume = total_volume
+  
+  # Avg price does not deviate enough from low price, everything is a buy order
+  low_diff = avg_price - low_price
+  if low_diff < 1000:
+    return result
+  
+  # High and low prices are the same. Though this could mean everything is a sell order
+  # be conservative and assume everything is a buy order
+  low_high_range = high_price - low_price
+  if low_high_range < 1000:
+    return result
+  
+  t = low_diff / low_high_range
+  result.m_SellVolume = int(t * total_volume)
+  result.m_BuyVolume = int((1 - t) * total_volume)
+  return result
 
 class MarketModel:
   def __init__(self) -> None:
@@ -98,7 +126,7 @@ class MarketModel:
     item_ids = list(region.m_ItemIDToRegionItemData.keys())
     return item_ids
   
-  def GetItemDataFromRegionIdAndItemId(self, region_id : int, item_id : int) -> ItemData or None:
+  def GetItemDataFromRegionIdAndItemId(self, region_id : int, item_id : int) -> ItemData | None:
     region = self.m_RegionIdToRegionData.get(region_id)
     if region is None:
       return None
@@ -166,11 +194,17 @@ def ConvertRegionsOrdersScrapeToRegionMarketData(scrape : CSEScrapeHelper.Region
     for recent_order_dict in recent_order_dicts:
       average = recent_order_dict.get('average')
       highest_price = recent_order_dict.get('highest')
+      lowest_price = recent_order_dict.get('lowest')
       volume = recent_order_dict.get('volume')
       if average > CSECommon.ZERO_TOL and volume > CSECommon.ZERO_TOL and item_data.m_RecentVolume > 0:
         weight = volume / item_data.m_RecentVolume
         item_data.m_RecentAveragePrice = item_data.m_RecentAveragePrice + weight * average
         item_data.m_RecentHighPrice = item_data.m_RecentHighPrice + weight * highest_price
+        item_data.m_RecentLowPrice = item_data.m_RecentLowPrice + weight * lowest_price
+
+    estimates = EstimateBuyAndSellVolumeCounts(item_data.m_RecentVolume, item_data.m_RecentLowPrice, item_data.m_RecentAveragePrice, item_data.m_RecentHighPrice)
+    item_data.m_RecentBuyVolumeEstimate = estimates.m_BuyVolume
+    item_data.m_RecentSellVolumeEstimate = estimates.m_SellVolume
 
   # Process orders
   for item_id, order_dict_array in scrape.m_ItemIdToOrderDictArray.items():

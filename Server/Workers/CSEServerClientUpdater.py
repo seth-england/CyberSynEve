@@ -1,24 +1,11 @@
 # Periodically gets info from the eve server about a client
-
-import requests
 import CSEMessages
-import multiprocessing
 import CSECommon
-import queue
-import threading
-import CSEMapModel
 import CSEClientModel
-import CSEMarketModel
-import CSEItemModel
-import copy
-import time
-import random
-import CSEServerMessageSystem
 import CSEServerModelUpdateHelper
 import Queries.CSEProfitableQuery as CSEProfitableQuery
 import CSEClientSettings
 import CSEScrapeHelper
-import Queries.CSEUndercutQuery as CSEUndercutQuery
 import Queries.CSEMarketBalanceQuery as CSEMarketBalanceQuery
 import CSECharacterModel
 import Workers.CSEServerWorker as CSEServerWorker
@@ -119,8 +106,11 @@ def Main(worker : CSEServerWorker.Worker, uuid : str):
         ( \
           worker.m_AllModels.m_MapModel, 
           worker.m_AllModels.m_MarketModel, 
-          worker.m_AllModels.m_ItemModel, 
-          region_id, 
+          worker.m_AllModels.m_ItemModel,
+          worker.m_AllModels.m_CharacterModel,
+          character_ids,
+          region_id,
+          pct_of_recent_volume_limit=client_settings.m_ProfitableSettings.m_PctOfRecentVolume,
           max_ship_volume=max_ship_volume, 
           min_order_count=client_settings.m_ProfitableSettings.m_MinOrderCount,
           min_profit=client_settings.m_ProfitableSettings.m_MinProfit,

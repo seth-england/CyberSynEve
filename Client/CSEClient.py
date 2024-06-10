@@ -46,6 +46,8 @@ class CSEClient:
     print("1) Find a profitable route")
     print("2) Market balance")
     print("3) Login Character")
+    print("4) Print Characters")
+    print("5) Print Safety")
     self.m_State = CLIENT_STATE_MAIN
   
   def UpdateMain(self, user_input : str):
@@ -55,7 +57,23 @@ class CSEClient:
       self.TransitionBalance()
     elif user_input.find('3') > -1:
       self.TransitionCharType()
+    elif user_input.find('4') > -1:
+      self.TransitionPrintChars()
+    elif user_input.find('5') > -1:
+      self.TransitionSafety()
       return
+    
+  def TransitionPrintChars(self):
+    request = CSEHTTP.CharactersRequest()
+    request.m_UUID = self.m_UUID
+    request_json = CSECommon.ObjectToJsonString(request)
+    res_json = CSECommon.DecodeJsonFromURL(CSECommon.SERVER_CHARACTERS_URL, json=request_json)
+    if res_json:
+      res = CSEHTTP.CharactersResponse()
+      CSECommon.FromJson(res, res_json)
+      for id, name, type, logged_in in zip(res.m_CharacterIds, res.m_CharaterNames, res.m_CharacterTypes, res.m_CharacterLoggedIn):
+        print(f'{name} {type} {"Logged In" if logged_in else "X Logged Out X"}')
+    self.TransitionMain()
 
   def TransitionProfitable(self):
     self.m_State = CLIENT_STATE_PROFITABLE
@@ -70,7 +88,8 @@ class CSEClient:
       if res.m_ProfitableResult.m_Valid:
         self.m_ProfitableResult = res.m_ProfitableResult
         for i,profitable_result in enumerate(res.m_ProfitableResult.m_Entries):
-          print(f'{i}. {profitable_result.m_RateOfProfit * 100:.1f}% {profitable_result.m_Profit:,.1f} ISK {profitable_result.m_ItemCount} {profitable_result.m_ItemName} -> {profitable_result.m_SellRegionName}')
+          if not profitable_result.m_AlreadyListed:
+            print(f'{i: 3}.) {profitable_result.m_ItemCount: 4} {profitable_result.m_BuyPricePerUnit/1000000: 7.3f}m {profitable_result.m_ItemName} ROP: {profitable_result.m_RateOfProfit * 100:.1f}% Profit: {profitable_result.m_Profit/1000000:.1f}m -> {profitable_result.m_SellRegionName}')
       else:
         print("Not found.")
         self.TransitionMain()
@@ -106,7 +125,16 @@ class CSEClient:
     else:
        print("Unable to retrieve undercut results from server. The server may still be working.")
     self.TransitionMain()
-  
+
+  def TransitionSafety(self):
+    res_json = CSECommon.DecodeJsonFromURL(CSECommon.SERVER_SAFETY_URL)
+    if res_json:
+      res = CSEHTTP.SafetyResponse()
+      CSECommon.FromJson(res, res_json)
+      print(f'Jita To Dodixie: {'Safe' if res.m_JitaToDodixieSafe else "X NOT SAFE X"}')
+      print(f'Jita To Amarr: {'Safe' if res.m_JitaToAmarrSafe else "X NOT SAFE X"}')
+    self.TransitionMain()
+
   def TransitionLoginCharacter(self, char_type : str):
     redirect_uri = urllib.parse.quote_plus(CSECommon.SERVER_AUTH_URL)
     scope = urllib.parse.quote_plus(CSECommon.SCOPES)

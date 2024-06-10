@@ -25,6 +25,7 @@ class CSESystemData:
     self.m_AdjcentSystemsIds = []
     self.m_X = 0
     self.m_Z = 0
+    self.m_Security = 0
 
 class CSEConstellationData:
   def __init__(self):
@@ -43,6 +44,7 @@ class RouteData:
   def __init__(self) -> None:
     # Route is a list of system ids
     self.m_SystemIdToSystemIdToShortestRoute = dict[int, dict[int, list[int]]]()
+    self.m_LastSafetyUpdate = CSEMessages.SafetyUpdated()
 
 class MapModel:
   def __init__(self):
@@ -96,6 +98,12 @@ class MapModel:
     result = set(result_list)
     return result
   
+  def GetSystemIdByName(self, system_name : str) -> int | None:
+    for system_data in self.m_SystemIdToSystem.values():
+      if system_data.m_Name == system_name:
+        return system_data.m_Id
+    return None
+  
   def GetMajorHubRegionIds(self) -> set[int]:
     result = set[int]()
     forge_id = self.GetRegionIdByName("The Forge")
@@ -122,14 +130,7 @@ class MapModel:
     return None
   
   # Returns a list of system ids
-  def GetRouteData(self, origin_system_id, dest_system_id) -> list[int] or None:
-    # Look at already cached routes
-    origin_dict = self.m_RouteData.m_SystemIdToSystemIdToShortestRoute.get(origin_system_id)
-    if origin_dict:
-      route = origin_dict.get(dest_system_id)
-      if route:
-        return route
-    
+  def GetRouteData(self, origin_system_id, dest_system_id, msg_system : CSEServerMessageSystem.MessageSystem) -> list[int] | None:    
     # Pull from eve servers
     url = CSECommon.EVE_ROUTE + str(origin_system_id) + '/' + str(dest_system_id) + '/'
     parameters = { 'destination': dest_system_id, 'flag': 'shortest', 'origin': origin_system_id }
@@ -141,7 +142,7 @@ class MapModel:
       msg.m_Route = route
       msg.m_OriginSystemId = origin_system_id
       msg.m_DestSystemId = dest_system_id
-      CSEServerMessageSystem.g_MessageSystem.QueueModelUpdateMessage(msg)
+      msg_system.QueueModelUpdateMessage(msg)
     
     return route
   
@@ -152,6 +153,12 @@ class MapModel:
        origin_dict = dict[int, list[int]]()
        self.m_RouteData.m_SystemIdToSystemIdToShortestRoute[message.m_OriginSystemId] = origin_dict
      origin_dict[message.m_DestSystemId] = message.m_Route   
+  
+  def HandleSafetyUpdated(self, message : CSEMessages.SafetyUpdated):
+    if message.m_JitaToDodixieUnsafeTime > 0:
+      self.m_RouteData.m_LastSafetyUpdate.m_JitaToDodixieUnsafeTime = message.m_JitaToDodixieUnsafeTime
+    if message.m_JitaToAmarrUnsafeTime > 0:
+      self.m_RouteData.m_LastSafetyUpdate.m_JitaToAmarrUnsafeTime = message.m_JitaToAmarrUnsafeTime
 
   def SerializeRouteData(self, file_path : str):
     CSEFileSystem.WriteObjectJsonToFilePath(file_path, self.m_RouteData)
@@ -199,6 +206,9 @@ class MapModel:
     for system_dict in scrape.m_SystemsScrape.m_SystemsIdToDict.values():
       system_entry = CSESystemData()
       system_entry.m_Name = system_dict['name']
+      security = system_dict.get('security_status')
+      if security:
+        system_entry.m_Security = security
       constellation_id = system_dict['constellation_id']
       constellation = self.m_ConstellationIdToConstellation[constellation_id]
       system_entry.m_RegionId = constellation.m_RegionId

@@ -84,3 +84,9 @@ class CharacterLoggedOut(CSEMessageBase):
     super().__init__()
     self.m_ClientUUID = 0
     self.m_CharacterId = 0
+
+class SafetyUpdated(CSEMessageBase):
+  def __init__(self):
+    super().__init__()
+    self.m_JitaToDodixieUnsafeTime = 0
+    self.m_JitaToAmarrUnsafeTime = 0

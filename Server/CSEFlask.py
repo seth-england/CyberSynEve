@@ -15,6 +15,7 @@ import CSEMessages
 import CSEHTTP
 import threading
 import signal
+import time
 from flask import Flask, request, jsonify
 from base64 import b64encode
 from telnetlib import NOP
@@ -29,6 +30,38 @@ CLIENT_SECRET = 'EfdmhqJg7vncmfAEshRANS4wMtcawguFLGZSyJ9Z'
 
 server = CSEServer.CSEServer()
 
+@app.route(CSECommon.SERVER_SAFETY_ENDPOINT)
+def Safety():
+  res = CSEHTTP.SafetyResponse()
+  curr_time = time.time()
+  diff = curr_time - server.m_MapModel.m_RouteData.m_LastSafetyUpdate.m_JitaToDodixieUnsafeTime
+  if diff < CSECommon.SAFETY_TIME:
+    res.m_JitaToDodixieSafe = False
+
+  diff = curr_time - server.m_MapModel.m_RouteData.m_LastSafetyUpdate.m_JitaToAmarrUnsafeTime
+  if diff < CSECommon.SAFETY_TIME:
+    res.m_JitaToAmarrSafe = False
+  json_string = CSECommon.ObjectToJsonString(res)
+  return json_string, CSECommon.OK_CODE
+
+@app.route(CSECommon.SERVER_CHARACTERS_ENDPOINT)
+def Characters():
+    dict = json.loads(request.json)
+    http_request = CSEHTTP.CharactersRequest()
+    CSECommon.FromJson(http_request, dict)
+    char_ids = server.m_ClientModel.GetCharacterIds(http_request.m_UUID)
+    res = CSEHTTP.CharactersResponse()
+    if len(char_ids) > 0:
+      for char_id in char_ids:
+        char_data = server.m_CharacterModel.GetCharDataById(char_id)
+        if char_data:
+          res.m_CharacterIds.append(char_data.m_CharacterId)
+          res.m_CharaterNames.append(char_data.m_CharacterName)
+          res.m_CharacterTypes.append(char_data.m_Type)
+          res.m_CharacterLoggedIn.append(char_data.m_LoggedIn)
+    return CSECommon.ObjectToJsonString(res), CSECommon.OK_CODE
+      
+
 @app.route(CSECommon.SERVER_AUTH_ENDPOINT)
 def Auth():
   with server.m_LockFlask:
@@ -41,9 +74,12 @@ def Auth():
     user_and_pass_param = b64encode(user_and_pass).decode("ascii")
     header_params = {'Authorization' : 'Basic %s' % user_and_pass_param, 'Content-Type' : 'application/x-www-form-urlencoded', 'Host' : 'login.eveonline.com'}
     res = requests.post('https://login.eveonline.com/v2/oauth/token', data=url_encoded, headers=header_params)
+    if res.status_code != CSECommon.OK_CODE:
+      return "", res.status_code
     json_content = json.loads(res.content)
-    access_token = json_content['access_token']
-    refresh_token = json_content['refresh_token']
+    access_token = json_content.get('access_token')
+    refresh_token = json_content.get('refresh_token')
+    
 
     # Verify the token
     query = {'user-agent': CSECommon.CLIENT_ID, 'token' : access_token}

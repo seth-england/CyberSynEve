@@ -12,8 +12,7 @@ import time
 import CSECharacterModel
 import Workers.CSEServerWorker as CSEServerWorker
 
-def Main(worker : CSEServerWorker.Worker):
-  worker.m_MsgSystem.RegisterForModelUpdateQueue(threading.get_ident(), worker.m_ModelUpdateQueue)    
+def Main(worker : CSEServerWorker.Worker):   
   while True:
     results = CSEServerModelUpdateHelper.ApplyAllUpdates(worker.m_ModelUpdateQueue, worker.m_AllModels.m_MarketModel, worker.m_AllModels.m_ClientModel, worker.m_AllModels.m_MapModel, worker.m_AllModels.m_CharacterModel)
     # Write market model

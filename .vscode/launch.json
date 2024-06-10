@@ -6,7 +6,7 @@
     "configurations": [
         {
             "name": "Run Flask Server",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "flask",
             "env": {
@@ -16,14 +16,15 @@
             "args": [
                 "run",
                 "--no-debugger",
-                "--no-reload"
+                "--no-reload",
+                "--host=0.0.0.0"
             ],
             "jinja": true,
-            "justMyCode": true
+            "justMyCode": false
         },
         {
             "name": "Python: Current File",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",

@@ -25,6 +25,7 @@ class CSEProfitableResultEntry:
     self.m_SellRegionId = 0
     self.m_SellRegionName = ""
     self.m_SellRegionSellOrderCount = 0
+    self.m_AlreadyListed = False
 
   def SortFunc(self):
     return self.m_RateOfProfit
@@ -96,3 +97,9 @@ class CharactersResponse:
     self.m_CharacterIds = list[int]()
     self.m_CharaterNames = list[str]()
     self.m_CharacterTypes = list[str]()
+    self.m_CharacterLoggedIn = list[bool]()
+
+class SafetyResponse:
+  def __init__(self) -> None:
+    self.m_JitaToDodixieSafe = True
+    self.m_JitaToAmarrSafe = True

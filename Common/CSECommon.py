@@ -8,9 +8,12 @@ from json import JSONDecoder, JSONEncoder
 import inspect
 import json
 import requests
+import CSELogging
 
 # Server Locations
+#SERVER_URL = 'http://192.168.50.225:5000'
 SERVER_URL = 'http://127.0.0.1:5000'
+#SERVER_URL = 'http://0.0.0.0:5000'
 SERVER_AUTH_ENDPOINT = '/auth'
 SERVER_AUTH_URL = SERVER_URL + SERVER_AUTH_ENDPOINT
 SERVER_CHECK_LOGIN_ENDPOINT = '/checklogin'
@@ -27,6 +30,8 @@ SERVER_MARKET_BALANCE_ENDPOINT = '/marketbalance'
 SERVER_MARKET_BALANCE_URL = SERVER_URL + SERVER_MARKET_BALANCE_ENDPOINT
 SERVER_CHARACTERS_ENDPOINT = '/characters'
 SERVER_CHARACTERS_URL = SERVER_URL + SERVER_CHARACTERS_ENDPOINT 
+SERVER_SAFETY_ENDPOINT = '/safety'
+SERVER_SAFETY_URL = SERVER_URL + SERVER_SAFETY_ENDPOINT
 
 # Eve server
 import ProjectSettings
@@ -47,6 +52,7 @@ NOT_FOUND_CODE = 404
 BAD_PARAMS_CODE = 400
 OK_CODE = 200
 CHILL_CODE = 420
+INTERNAL_SERVER_ERROR = 500
 
 #Other
 SHOULD_AUTHORIZE = False
@@ -62,6 +68,9 @@ INF = float("inf")
 INVALID_UUID = ""
 REASONABLE_ATTEMPTS = 5
 FULL_PAGE_ORDER_COUNT = 1000
+SERVER_ERROR_SLEEP_SECONDS = 60
+APP_NAME = "KomissarTest"
+SAFETY_TIME = 3600
 
 CHAR_TYPE_HAULER = "HAULER"
 CHAR_TYPE_TRADE_BOT = "TRADE"
@@ -114,6 +123,12 @@ async def DecodeJsonAsyncHelper(session : aiohttp.ClientSession, url, **args):
       raise Exception("Too many errors from the server")
     elif res.status == NOT_FOUND_CODE:
       return None
+    elif res.status == INTERNAL_SERVER_ERROR:
+      text = await res.text()
+      dict = JSONDecoder().decode(text)
+      error = dict.get('error')
+      CSELogging.Log(f'Encountered internal server error accessing {url} sleeping for {SERVER_ERROR_SLEEP_SECONDS} {error}')
+      time.sleep(SERVER_ERROR_SLEEP_SECONDS)
     elif res.status == BAD_PARAMS_CODE:
       return None
     attempts += 1
@@ -139,6 +154,9 @@ def DecodeJsonFromURL(url, **args):
       raise Exception("Too many errors from the server")
     elif res.status_code == NOT_FOUND_CODE:
       return None
+    elif res.status_code == INTERNAL_SERVER_ERROR:
+      CSELogging.Log(f'Encountered internal server error accessing {url} sleeping for {SERVER_ERROR_SLEEP_SECONDS}')
+      time.sleep(SERVER_ERROR_SLEEP_SECONDS)
     elif res.status_code == BAD_PARAMS_CODE:
       return None
     attempts += 1
@@ -164,6 +182,9 @@ def PostAndDecodeJsonFromURL(url, **args):
       raise Exception("Too many errors from the server")
     elif res.status_code == NOT_FOUND_CODE:
       return None
+    elif res.status_code == INTERNAL_SERVER_ERROR:
+      CSELogging.Log(f'Encountered internal server error accessing {url} sleeping for {SERVER_ERROR_SLEEP_SECONDS}')
+      time.sleep(SERVER_ERROR_SLEEP_SECONDS)
     elif res.status_code == BAD_PARAMS_CODE:
       return None
     attempts += 1

@@ -2,18 +2,21 @@ import CSEMapModel
 import CSEMarketModel
 import CSEItemModel
 import CSECommon
+import CSECharacterModel
 from CSEHTTP import CSEProfitableResult, CSEProfitableResultEntry
 
 def ProfitableQuery(map_model : CSEMapModel.MapModel,
                     market_model : CSEMarketModel.MarketModel,
                     item_model : CSEItemModel.ItemModel,
+                    char_model : CSECharacterModel.Model,
+                    char_ids : list[int],
                     starting_region_id : int,
-                    pct_of_recent_volume_limit : float = .05,
-                    end_region_id : int or None = None, 
-                    max_ship_volume : int or None = None,
-                    min_order_count : int or None = None,
-                    min_profit_rate : int or None = None,
-                    min_profit : int or None = None) -> CSEProfitableResult:
+                    pct_of_recent_volume_limit : float = .1,
+                    end_region_id : int | None = None, 
+                    max_ship_volume : int | None = None,
+                    min_order_count : int | None = None,
+                    min_profit_rate : int | None = None,
+                    min_profit : int | None = None) -> CSEProfitableResult:
   result = CSEProfitableResult()
 
   start_region = map_model.GetRegionById(starting_region_id)
@@ -76,8 +79,8 @@ def ProfitableQuery(map_model : CSEMapModel.MapModel,
       end_region = map_model.GetRegionById(end_region_id)
       if end_region is None:
         continue
-      item_count = int(min(item_count_capacity, end_market_item_data.m_RecentVolume * pct_of_recent_volume_limit))
-      item_count = int(min(item_count, start_market_item_data.m_RecentVolume * pct_of_recent_volume_limit))
+      item_count = int(min(item_count_capacity, end_market_item_data.m_RecentSellVolumeEstimate * pct_of_recent_volume_limit))
+      item_count = int(min(item_count, start_market_item_data.m_RecentSellVolumeEstimate * pct_of_recent_volume_limit))
       if item_count < 1:
         continue
       
@@ -123,5 +126,13 @@ def ProfitableQuery(map_model : CSEMapModel.MapModel,
     profitable_entries.reverse()
     result.m_Entries = profitable_entries
     result.m_Valid = True
+
+  # Figure out which entries are already listed
+  for profitable_entry in profitable_entries:
+    for char_id in char_ids:
+      profitable_entry.m_AlreadyListed = char_model.HasSellOrderForItemInRegion(char_id, profitable_entry.m_ItemId, profitable_entry.m_SellRegionId)
+      if profitable_entry.m_AlreadyListed:
+        break
+
   
   return result  
