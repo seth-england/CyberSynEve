@@ -66,6 +66,10 @@ class MapModel:
     value = self.m_RegionIdToRegion.get(key)
     return value
   
+  def GetAllRegionIds(self) -> list[int]:
+    key_list = list(self.m_RegionIdToRegion.keys())
+    return key_list
+  
   def GetRegionIdBySystemId(self, system_id : int) -> int | None:
     system = self.m_SystemIdToSystem.get(system_id)
     if system is None:

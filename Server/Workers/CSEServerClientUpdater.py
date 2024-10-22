@@ -9,11 +9,14 @@ import CSEScrapeHelper
 import Queries.CSEMarketBalanceQuery as CSEMarketBalanceQuery
 import CSECharacterModel
 import Workers.CSEServerWorker as CSEServerWorker
+import sqlite3
+import SQLHelpers
 
 def Main(worker : CSEServerWorker.Worker, uuid : str):
   CSEServerModelUpdateHelper.ApplyAllUpdates(worker.m_ModelUpdateQueue, worker.m_AllModels.m_MarketModel, worker.m_AllModels.m_ClientModel, worker.m_AllModels.m_MapModel, worker.m_AllModels.m_CharacterModel)
   client_update_message = CSEClientModel.UpdateClientResponse()
   client_update_message.m_UUID = uuid
+  conn = SQLHelpers.Connect(CSECommon.MASTER_DB_PATH)
   character_ids = worker.m_AllModels.m_ClientModel.GetCharacterIds(client_update_message.m_UUID)
   for character_id in character_ids:
     char_data = worker.m_AllModels.m_CharacterModel.GetCharDataById(character_id)
@@ -104,6 +107,7 @@ def Main(worker : CSEServerWorker.Worker, uuid : str):
         client_update_message.m_ProfitableQueryResult = \
         CSEProfitableQuery.ProfitableQuery\
         ( \
+          conn,
           worker.m_AllModels.m_MapModel, 
           worker.m_AllModels.m_MarketModel, 
           worker.m_AllModels.m_ItemModel,
@@ -126,3 +130,4 @@ def Main(worker : CSEServerWorker.Worker, uuid : str):
   client_update_message.m_MarketBalanceQueryResult = CSEMarketBalanceQuery.Query(profitable_query_transactions, worker.m_AllModels.m_ItemModel)
 
   worker.m_MsgSystem.QueueModelUpdateMessage(client_update_message)
+  conn.close()

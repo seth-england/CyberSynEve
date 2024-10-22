@@ -21,12 +21,7 @@ def ApplyAllUpdates(q : queue.Queue, market_model : CSEMarketModel.MarketModel, 
   
   while q.empty() is False:
     msg = q.get_nowait()
-    if type(msg) == CSEMessages.CSEMessageScrapeRegionOrdersResult:
-      if market_model:
-        market_model.HandleScrapeRegionOrdersResult(msg.m_MarketRegionData)
-        results.m_AppliedAnyUpdate = True
-        results.m_AppliedMarketModelUpdate = True
-    elif type(msg) == CSEClientModel.UpdateClientResponse:
+    if type(msg) == CSEClientModel.UpdateClientResponse:
       if client_model:
         client_model.HandleUpdateClientResponse(msg)
         results.m_AppliedAnyUpdate = True

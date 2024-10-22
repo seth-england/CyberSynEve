@@ -90,6 +90,12 @@ REGION_MARKET_SCRAPES_DIR = FILES_ROOT_PATH + '/Server/Scrapes/RegionMarkets/'
 BACKUP_FILE_SUFFIX = 'BACK'
 CLIENT_SETTINGS_FILE_PATH = 'ClientSettings' + SERIALIZED_FILE_EXT
 CLIENT_FILE_PATH = 'Client' + SERIALIZED_FILE_EXT
+MASTER_DB_PATH = FILES_ROOT_PATH + '/CSEMasterDB.db'
+
+#Tables
+TABLE_ORDER_HISTORY = "OrderHistory"
+TABLE_CURRENT_ORDERS = "CurrentOrders"
+TABLE_SALE_RECORD = "SaleRecords"
 
 def SetObjectFromDict(self, dictionary):
   for key, value in dictionary.items():

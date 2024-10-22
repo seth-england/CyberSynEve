@@ -38,11 +38,17 @@ import Workers.CSEServerWorker as CSEServerWorker
 import multiprocessing
 import CSEServerRequestCoordinator
 import Workers.CSESafetyChecker as CSESafetyChecker
+import sqlite3
+import SQLEntities
+import SQLHelpers
+import Workers.CSEServerOrderProcessor
+import datetime
 from multiprocessing.managers import BaseManager
 from base64 import b64encode
 from telnetlib import NOP
 
 CSESERVER_ORDER_SCRAPE_WORKERS_COUNT = 1
+sqlite3.threadsafety = 1
 
 class MultiprocessingManager(multiprocessing.managers.SyncManager):
     # nothing
@@ -64,9 +70,11 @@ class CSEServer:
     self.m_MsgSystem = CSEServerMessageSystem.g_MessageSystem
     self.m_FileWriter : CSEServerFileWriter.FileWriter = None
     self.m_ModelUpdateQueue = None
+    self.m_OrderProcessingQueue = list[CSEScrapeHelper.RegionOrdersScrape]()
     self.m_CharacterModel = CSECharacterModel.Model()
     self.m_WorkerClientUpdater = CSEServerWorker.Worker()
-    self.m_WorkerOrderScrapers = list[CSEServerWorker.Worker]()
+    self.m_WorkerOrderScraper = CSEServerWorker.Worker()
+    self.m_WorkerOrderProcessor = CSEServerWorker.Worker()
     self.m_WorkerFileWriter = CSEServerWorker.Worker()
     self.m_WorkerSafety = CSEServerWorker.Worker()
     self.m_MultiprocessingManager = MultiprocessingManager()
@@ -88,6 +96,21 @@ def Main(server : CSEServer):
   asyncio.run(CSEServerLoopMain(server))
 
 async def CSEServerLoopMain(server_data : CSEServer):
+  #test_conn = sqlite3.connect("Test.db")
+  #SQLHelpers.CreateTable(test_conn, "TestTable", SQLEntities.SQLOrderHistory)
+  #test_order = SQLEntities.SQLOrderHistory()
+  #test_order.m_ID = 1
+  #test_order.m_Date = (test_order.m_Date + datetime.timedelta(days=1))
+  #SQLHelpers.InsertOrUpdateInstanceInTable(test_conn, "TestTable", test_order)
+  #test_conn.commit()
+  #test_get = SQLHelpers.GetEntityById(test_conn, "TestTable", SQLEntities.SQLOrderHistory, test_order.m_ID)
+  #sqlite3.Time
+
+  # Make sure the master db is unlocked
+  clear_conn = SQLHelpers.Connect(CSECommon.MASTER_DB_PATH)
+  clear_conn.commit()
+  clear_conn.close()
+  
   server_data.m_Connector = aiohttp.TCPConnector(limit=50)
   server_data.m_ClientSession = aiohttp.ClientSession(connector=server_data.m_Connector)
   
@@ -98,6 +121,7 @@ async def CSEServerLoopMain(server_data : CSEServer):
 
   server_data.m_MultiprocessingManager.register("MessageSystem", CSEServerMessageSystem.MessageSystem)
   server_data.m_MultiprocessingManager.register("RequestCoordinator", CSEServerRequestCoordinator.Coordinator)
+  server_data.m_MultiprocessingManager.register("RegionOrdersScrape", CSEScrapeHelper.RegionOrdersScrape)
   server_data.m_MultiprocessingManager.start()
 
   # Set up shared message system
@@ -111,54 +135,75 @@ async def CSEServerLoopMain(server_data : CSEServer):
   func_q = server_data.m_MultiprocessingManager.Queue()
   args_q = server_data.m_MultiprocessingManager.Queue()
   model_q = server_data.m_MultiprocessingManager.Queue()
+  ret_q = server_data.m_MultiprocessingManager.Queue()
   condition = server_data.m_MultiprocessingManager.Condition()
   server_data.m_WorkerClientUpdater = CSEServerWorker.Worker()
   server_data.m_WorkerClientUpdater.m_FuncQueue = func_q
   server_data.m_WorkerClientUpdater.m_ArgsQueue = args_q
   server_data.m_WorkerClientUpdater.m_ModelUpdateQueue = model_q
+  server_data.m_WorkerClientUpdater.m_RetQueue = ret_q
   server_data.m_WorkerClientUpdater.m_Condition = condition
-  server_data.m_WorkerClientUpdater.m_Process = multiprocessing.Process(target=CSEServerWorker.Worker.WorkerMain, args=(server_data.m_WorkerClientUpdater, server_data.m_MsgSystem, func_q, args_q, model_q, condition, server_data.m_ServerRequestCoordinator))
+  server_data.m_WorkerClientUpdater.m_Process = multiprocessing.Process(target=CSEServerWorker.Worker.WorkerMain, args=(server_data.m_WorkerClientUpdater, server_data.m_MsgSystem, func_q, args_q, model_q, condition, server_data.m_ServerRequestCoordinator, ret_q))
   server_data.m_WorkerClientUpdater.m_Process.daemon = True
   server_data.m_WorkerClientUpdater.m_Process.start()
-
-  for i in range(0, CSESERVER_ORDER_SCRAPE_WORKERS_COUNT):
-    func_q = server_data.m_MultiprocessingManager.Queue()
-    args_q = server_data.m_MultiprocessingManager.Queue()
-    model_q = server_data.m_MultiprocessingManager.Queue()
-    condition = server_data.m_MultiprocessingManager.Condition()
-    worker = CSEServerWorker.Worker()
-    worker.m_FuncQueue = func_q
-    worker.m_ArgsQueue = args_q
-    worker.m_ModelUpdateQueue = model_q
-    worker.m_Condition = condition
-    worker.m_Process = multiprocessing.Process(target=CSEServerWorker.Worker.WorkerMainAsync, args=(worker,server_data.m_MsgSystem, func_q, args_q, model_q, condition, server_data.m_ServerRequestCoordinator))
-    worker.m_Process.daemon = True
-    worker.m_Process.start()
-    server_data.m_WorkerOrderScrapers.append(worker)
 
   func_q = server_data.m_MultiprocessingManager.Queue()
   args_q = server_data.m_MultiprocessingManager.Queue()
   model_q = server_data.m_MultiprocessingManager.Queue()
+  ret_q = server_data.m_MultiprocessingManager.Queue()
+  condition = server_data.m_MultiprocessingManager.Condition()
+  server_data.m_WorkerOrderScraper = CSEServerWorker.Worker()
+  server_data.m_WorkerOrderScraper.m_FuncQueue = func_q
+  server_data.m_WorkerOrderScraper.m_ArgsQueue = args_q
+  server_data.m_WorkerOrderScraper.m_ModelUpdateQueue = model_q
+  server_data.m_WorkerOrderScraper.m_RetQueue = ret_q
+  server_data.m_WorkerOrderScraper.m_Condition = condition
+  server_data.m_WorkerOrderScraper.m_Process = multiprocessing.Process(target=CSEServerWorker.Worker.WorkerMainAsync, args=(server_data.m_WorkerOrderScraper,server_data.m_MsgSystem, func_q, args_q, model_q, condition, server_data.m_ServerRequestCoordinator, ret_q))
+  server_data.m_WorkerOrderScraper.m_Process.daemon = True
+  server_data.m_WorkerOrderScraper.m_Process.start()
+
+  func_q = server_data.m_MultiprocessingManager.Queue()
+  args_q = server_data.m_MultiprocessingManager.Queue()
+  model_q = server_data.m_MultiprocessingManager.Queue()
+  ret_q = server_data.m_MultiprocessingManager.Queue()
+  condition = server_data.m_MultiprocessingManager.Condition()
+  server_data.m_WorkerOrderProcessor = CSEServerWorker.Worker()
+  server_data.m_WorkerOrderProcessor.m_FuncQueue = func_q
+  server_data.m_WorkerOrderProcessor.m_ArgsQueue = args_q
+  server_data.m_WorkerOrderProcessor.m_ModelUpdateQueue = model_q
+  server_data.m_WorkerOrderProcessor.m_RetQueue = ret_q
+  server_data.m_WorkerOrderProcessor.m_Condition = condition
+  server_data.m_WorkerOrderProcessor.m_Process = multiprocessing.Process(target=CSEServerWorker.Worker.WorkerMain, args=(server_data.m_WorkerOrderProcessor,server_data.m_MsgSystem, func_q, args_q, model_q, condition, server_data.m_ServerRequestCoordinator, ret_q))
+  server_data.m_WorkerOrderProcessor.m_Process.daemon = True
+  server_data.m_WorkerOrderProcessor.m_Process.start()
+
+  func_q = server_data.m_MultiprocessingManager.Queue()
+  args_q = server_data.m_MultiprocessingManager.Queue()
+  model_q = server_data.m_MultiprocessingManager.Queue()
+  ret_q = server_data.m_MultiprocessingManager.Queue()
   condition = server_data.m_MultiprocessingManager.Condition()
   server_data.m_WorkerFileWriter = CSEServerWorker.Worker()
   server_data.m_WorkerFileWriter.m_FuncQueue = func_q
   server_data.m_WorkerFileWriter.m_ArgsQueue = args_q
   server_data.m_WorkerFileWriter.m_ModelUpdateQueue = model_q
+  server_data.m_WorkerFileWriter.m_RetQueue = ret_q
   server_data.m_WorkerFileWriter.m_Condition = condition
-  server_data.m_WorkerFileWriter.m_Process = multiprocessing.Process(target=CSEServerWorker.Worker.WorkerMain, args=(server_data.m_WorkerFileWriter, server_data.m_MsgSystem, func_q, args_q, model_q, condition, server_data.m_ServerRequestCoordinator))
+  server_data.m_WorkerFileWriter.m_Process = multiprocessing.Process(target=CSEServerWorker.Worker.WorkerMain, args=(server_data.m_WorkerFileWriter, server_data.m_MsgSystem, func_q, args_q, model_q, condition, server_data.m_ServerRequestCoordinator, ret_q))
   server_data.m_WorkerFileWriter.m_Process.daemon = True
   server_data.m_WorkerFileWriter.m_Process.start()
 
   func_q = server_data.m_MultiprocessingManager.Queue()
   args_q = server_data.m_MultiprocessingManager.Queue()
   model_q = server_data.m_MultiprocessingManager.Queue()
+  ret_q = server_data.m_MultiprocessingManager.Queue()
   condition = server_data.m_MultiprocessingManager.Condition()
   server_data.m_WorkerSafety = CSEServerWorker.Worker()
   server_data.m_WorkerSafety.m_FuncQueue = func_q
   server_data.m_WorkerSafety.m_ArgsQueue = args_q
   server_data.m_WorkerSafety.m_ModelUpdateQueue = model_q
+  server_data.m_WorkerSafety.m_RetQueue = ret_q
   server_data.m_WorkerSafety.m_Condition = condition
-  server_data.m_WorkerSafety.m_Process = multiprocessing.Process(target=CSEServerWorker.Worker.WorkerMain, args=(server_data.m_WorkerSafety, server_data.m_MsgSystem, func_q, args_q, model_q, condition, server_data.m_ServerRequestCoordinator))
+  server_data.m_WorkerSafety.m_Process = multiprocessing.Process(target=CSEServerWorker.Worker.WorkerMain, args=(server_data.m_WorkerSafety, server_data.m_MsgSystem, func_q, args_q, model_q, condition, server_data.m_ServerRequestCoordinator, ret_q))
   server_data.m_WorkerSafety.m_Process.daemon = True
   server_data.m_WorkerSafety.m_Process.start()
 
@@ -271,16 +316,13 @@ async def CSEServerLoopMain(server_data : CSEServer):
 
     if not server_data.m_WorkerSafety.IsSleeping():
       continue
-    
-    not_sleeping = False
-    for worker in server_data.m_WorkerOrderScrapers:
-      if not worker.IsSleeping():
-        not_sleeping = True
-        break
-    
-    if not_sleeping:
+  
+    if not server_data.m_WorkerOrderScraper.IsSleeping():
       continue
-
+  
+    if not server_data.m_WorkerOrderProcessor.IsSleeping():
+      continue
+    
     break
 
   server_data.m_WorkerFileWriter.m_FuncQueue.put_nowait(CSEServerFileWriter.Main)
@@ -290,6 +332,7 @@ async def CSEServerLoopMain(server_data : CSEServer):
   server_data.m_WorkerSafety.Wake()
 
   scrape_region_ids = list(server_data.m_MapModel.GetMajorHubRegionIds())
+  #scrape_region_ids = list(server_data.m_MapModel.GetAllRegionIds())[5:]
 
   while True:
     # Check if we've crashed
@@ -297,10 +340,9 @@ async def CSEServerLoopMain(server_data : CSEServer):
     if not is_alive:
       os.abort()
     
-    for worker in server_data.m_WorkerOrderScrapers:
-      is_alive = worker.m_Process.is_alive()
-      if not is_alive:
-        os.abort()
+    is_alive = server_data.m_WorkerOrderScraper.m_Process.is_alive()
+    if not is_alive:
+      os.abort()
       
     is_alive = server_data.m_WorkerFileWriter.m_Process.is_alive()
     if not is_alive:
@@ -310,21 +352,46 @@ async def CSEServerLoopMain(server_data : CSEServer):
     if not is_alive:
       os.abort()
 
+    is_alive = server_data.m_WorkerOrderProcessor.m_Process.is_alive()
+    if not is_alive:
+      os.abort()
+
     # Manage order scraping
-    for worker in server_data.m_WorkerOrderScrapers:
-      if worker.IsSleeping():
-          if server_data.m_RegionScrapeIndex >= len(scrape_region_ids):
-            server_data.m_RegionScrapeIndex = 0
-          region_to_scrape_id = scrape_region_ids[server_data.m_RegionScrapeIndex]
-          region_to_scrape = server_data.m_MapModel.GetRegionById(region_to_scrape_id)
-          if region_to_scrape:
-            args = (region_to_scrape.m_Id, server_data.m_RegionScrapeIndex, region_to_scrape.m_Name)
-            worker.m_ArgsQueue.put_nowait(args)
-            worker.m_FuncQueue.put_nowait(CSEServerOrderScraper.Main)
-            worker.Wake()
-            server_data.m_RegionScrapeIndex += 1
+    if server_data.m_WorkerOrderScraper.IsSleeping():
+      if not server_data.m_WorkerOrderScraper.m_RetQueue.empty():
+        region_scrape : CSEScrapeHelper.RegionOrdersScrape = server_data.m_WorkerOrderScraper.m_RetQueue.get_nowait()
+        server_data.m_OrderProcessingQueue.append(region_scrape)
+
+      if server_data.m_RegionScrapeIndex >= len(scrape_region_ids):
+        server_data.m_RegionScrapeIndex = 0
+      region_to_scrape_id = scrape_region_ids[server_data.m_RegionScrapeIndex]
+      region_to_scrape = server_data.m_MapModel.GetRegionById(region_to_scrape_id)
+      if region_to_scrape:
+        args = (region_to_scrape.m_Id, server_data.m_RegionScrapeIndex, region_to_scrape.m_Name)
+        server_data.m_WorkerOrderScraper.m_ArgsQueue.put_nowait(args)
+        server_data.m_WorkerOrderScraper.m_FuncQueue.put_nowait(CSEServerOrderScraper.Main)
+        server_data.m_WorkerOrderScraper.Wake()
+        server_data.m_RegionScrapeIndex += 1
+
+    if server_data.m_WorkerOrderProcessor.IsSleeping():
+      count = len(server_data.m_OrderProcessingQueue)
+      if count > 0:
+        scrape = server_data.m_OrderProcessingQueue[count - 1]
+        args = (scrape,)
+        server_data.m_WorkerOrderProcessor.m_ArgsQueue.put_nowait(args)
+        server_data.m_WorkerOrderProcessor.m_FuncQueue.put_nowait(Workers.CSEServerOrderProcessor.Main)
+        server_data.m_WorkerOrderProcessor.Wake()
+        server_data.m_OrderProcessingQueue.pop()
+
     
     CSEServerModelUpdateHelper.ApplyAllUpdates(server_data.m_ModelUpdateQueue, server_data.m_MarketModel, server_data.m_ClientModel, server_data.m_MapModel, server_data.m_CharacterModel)
+
+    # Test db locking
+    test_conn = SQLHelpers.Connect(CSECommon.MASTER_DB_PATH)
+    test_item_id = 41
+    cursor = test_conn.execute(f'SELECT * FROM {CSECommon.TABLE_CURRENT_ORDERS} WHERE m_ItemId = ?', (test_item_id,))
+    sale_records : list[SQLEntities.SQLSaleRecord] = SQLHelpers.ConstructInstancesFromCursor(cursor, SQLEntities.SQLOrder)
+    test_conn.close()
 
     # Let http messages get processed
     server_data.m_LockFlask.release()

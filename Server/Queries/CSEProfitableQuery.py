@@ -3,9 +3,12 @@ import CSEMarketModel
 import CSEItemModel
 import CSECommon
 import CSECharacterModel
+import sqlite3
+import datetime
 from CSEHTTP import CSEProfitableResult, CSEProfitableResultEntry
 
-def ProfitableQuery(map_model : CSEMapModel.MapModel,
+def ProfitableQuery(conn : sqlite3.Connection,
+                    map_model : CSEMapModel.MapModel,
                     market_model : CSEMarketModel.MarketModel,
                     item_model : CSEItemModel.ItemModel,
                     char_model : CSECharacterModel.Model,
@@ -18,6 +21,7 @@ def ProfitableQuery(map_model : CSEMapModel.MapModel,
                     min_profit_rate : int | None = None,
                     min_profit : int | None = None) -> CSEProfitableResult:
   result = CSEProfitableResult()
+  time_delta = datetime.timedelta(days=5)
 
   start_region = map_model.GetRegionById(starting_region_id)
   if start_region is None:
@@ -35,15 +39,15 @@ def ProfitableQuery(map_model : CSEMapModel.MapModel,
     end_region_ids = end_region_ids.union(hub_ids)
 
   # Build the set of relevent items
-  start_region_item_ids = market_model.GetItemIdsFromRegionId(starting_region_id)
+  start_region_item_ids = market_model.GetItemIdsFromRegionId(conn, starting_region_id)
   filtered_item_ids = list[int]()
   for start_region_item_id in start_region_item_ids:
-    start_market_item_data = market_model.GetItemDataFromRegionIdAndItemId(starting_region_id, start_region_item_id)
+    start_market_item_data = market_model.GetRecentItemData(conn, starting_region_id, start_region_item_id, time_delta)
     item_data = item_model.GetItemDataFromID(start_region_item_id) 
     if start_market_item_data and item_data:
-      if start_market_item_data.m_RecentOrderCount >= min_order_count and \
+      if start_market_item_data.m_RecentSellOrderCount >= min_order_count and \
          item_data.m_Volume > CSECommon.ZERO_TOL and \
-         start_market_item_data.m_RecentAveragePrice > CSECommon.ZERO_TOL:
+         start_market_item_data.m_RecentSellAveragePrice > CSECommon.ZERO_TOL:
         filtered_item_ids.append(start_region_item_id)
 
   # For each item find the most profitable region, then see if it's profitable to
@@ -51,7 +55,7 @@ def ProfitableQuery(map_model : CSEMapModel.MapModel,
   profitable_entries = list[CSEProfitableResultEntry]()
   for item_id in filtered_item_ids:
     # Sanity check
-    start_market_item_data = market_model.GetItemDataFromRegionIdAndItemId(starting_region_id, item_id)
+    start_market_item_data = market_model.GetRecentItemData(conn, starting_region_id, item_id, time_delta)
     item_data = item_model.GetItemDataFromID(item_id)
     if item_data is None:
       continue
@@ -69,25 +73,24 @@ def ProfitableQuery(map_model : CSEMapModel.MapModel,
       # Sanity check
       if end_region_id == starting_region_id:
         continue
-      end_market_item_data = market_model.GetItemDataFromRegionIdAndItemId(end_region_id, item_id)
+      end_market_item_data = market_model.GetRecentItemData(conn, end_region_id, item_id, time_delta)
       if end_market_item_data is None:
         continue
-      if end_market_item_data.m_RecentOrderCount < min_order_count:
+      if end_market_item_data.m_RecentSellOrderCount < min_order_count:
         continue
-      if end_market_item_data.m_RecentAveragePrice < CSECommon.ZERO_TOL:
+      if end_market_item_data.m_RecentSellAveragePrice < CSECommon.ZERO_TOL:
         continue
       end_region = map_model.GetRegionById(end_region_id)
       if end_region is None:
         continue
-      item_count = int(min(item_count_capacity, end_market_item_data.m_RecentSellVolumeEstimate * pct_of_recent_volume_limit))
-      item_count = int(min(item_count, start_market_item_data.m_RecentSellVolumeEstimate * pct_of_recent_volume_limit))
+      item_count = int(min(item_count_capacity, end_market_item_data.m_RecentSellVolume * pct_of_recent_volume_limit))
+      item_count = int(min(item_count, start_market_item_data.m_RecentSellVolume * pct_of_recent_volume_limit))
       if item_count < 1:
         continue
       
       # Calculate profit
-      buy_unit_price = market_model.GetMeanSellPriceOfItemUpToItemCount(starting_region_id, item_id, item_count)
-      sell_unit_price = market_model.GetMeanSellPriceOfItemUpToItemCount(end_region_id, item_id, item_count)
-      sell_unit_price = min(end_market_item_data.m_RecentHighPrice, sell_unit_price)
+      buy_unit_price = start_market_item_data.m_RecentSellAveragePrice
+      sell_unit_price = end_market_item_data.m_RecentSellAveragePrice
       if buy_unit_price < CSECommon.ZERO_TOL:
         continue
       if sell_unit_price < CSECommon.ZERO_TOL:
@@ -109,14 +112,14 @@ def ProfitableQuery(map_model : CSEMapModel.MapModel,
       potential_entry.m_BuyRegionName = start_region.m_Name
       potential_entry.m_BuyPrice = buy_price
       potential_entry.m_BuyPricePerUnit = buy_price / item_count
-      potential_entry.m_BuyRegionSellOrderCount = market_model.GetSellOrderCount(starting_region_id, item_id)
+      potential_entry.m_BuyRegionSellOrderCount = market_model.GetSellOrderCount(conn, starting_region_id, item_id)
       potential_entry.m_ItemCount = item_count
       potential_entry.m_RateOfProfit = rate_of_profit
       potential_entry.m_SellPrice = sell_price
       potential_entry.m_SellPricePerUnit = sell_price / item_count
       potential_entry.m_SellRegionId = end_region_id
       potential_entry.m_SellRegionName = end_region.m_Name
-      potential_entry.m_SellRegionSellOrderCount = market_model.GetSellOrderCount(end_region_id, item_id)
+      potential_entry.m_SellRegionSellOrderCount = market_model.GetSellOrderCount(conn, end_region_id, item_id)
       profitable_entries.append(potential_entry)
 
   # Sort the profitable entries

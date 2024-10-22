@@ -9,12 +9,14 @@ import CSEServerModelUpdateHelper
 import os
 import multiprocessing
 import CSEServerRequestCoordinator
+import sqlite3
 
 class Worker:
   def __init__(self) -> None:
     self.m_AllModels = CSEServerAllModels.Models()
     self.m_FuncQueue : multiprocessing.Queue = None
     self.m_ArgsQueue : multiprocessing.Queue = None
+    self.m_RetQueue : multiprocessing.Queue = None
     self.m_Process : multiprocessing.Process = None
     self.m_MsgSystem : CSEServerMessageSystem.MessageSystem = None
     self.m_ModelUpdateQueue = multiprocessing.Queue()
@@ -35,11 +37,12 @@ class Worker:
     else:
       return False
     
-  def WorkerMain(self, msg_system, func_q, args_q, model_q, condition, coordinator):
+  def WorkerMain(self, msg_system, func_q, args_q, model_q, condition, coordinator, ret_q):
     try:
       self.m_MsgSystem = msg_system
       self.m_FuncQueue = func_q
       self.m_ArgsQueue = args_q
+      self.m_RetQueue = ret_q
       self.m_ModelUpdateQueue = model_q
       self.m_Condition = condition
       self.m_Coordinator = coordinator
@@ -50,11 +53,12 @@ class Worker:
     except Exception as e:
       raise e
   
-  def WorkerMainAsync(self, msg_system, func_q, args_q, model_q, condition, coordinator):
+  def WorkerMainAsync(self, msg_system, func_q, args_q, model_q, condition, coordinator, ret_q):
     try:
       self.m_MsgSystem = msg_system
       self.m_FuncQueue = func_q
       self.m_ArgsQueue = args_q
+      self.m_RetQueue = ret_q
       self.m_ModelUpdateQueue = model_q
       self.m_Condition = condition
       self.m_Coordinator = coordinator
