@@ -38,9 +38,6 @@ import Workers.CSEServerWorker as CSEServerWorker
 import multiprocessing
 import CSEServerRequestCoordinator
 import Workers.CSESafetyChecker as CSESafetyChecker
-import sqlite3
-import SQLEntities
-import SQLHelpers
 import Workers.CSEServerOrderProcessor
 import datetime
 from multiprocessing.managers import BaseManager
@@ -48,7 +45,6 @@ from base64 import b64encode
 from telnetlib import NOP
 
 CSESERVER_ORDER_SCRAPE_WORKERS_COUNT = 1
-sqlite3.threadsafety = 1
 
 class MultiprocessingManager(multiprocessing.managers.SyncManager):
     # nothing
@@ -79,6 +75,7 @@ class CSEServer:
     self.m_WorkerSafety = CSEServerWorker.Worker()
     self.m_MultiprocessingManager = MultiprocessingManager()
     self.m_ServerRequestCoordinator : CSEServerRequestCoordinator.Coordinator = None
+    self.m_Mode = CSECommon.MODE_DEFAULT
 
   def ScheduleClientUpdate(self, uuid : str):
       client_data = self.m_ClientModel.GetClientByUUID(uuid)
@@ -92,28 +89,14 @@ def WriteScrape(scrape):
   # Write up to date scrape to file
   CSEFileSystem.WriteObjectJsonToFilePath(CSECommon.SCRAPE_FILE_PATH, scrape)
 
-def Main(server : CSEServer):
-  asyncio.run(CSEServerLoopMain(server))
+def Main(server : CSEServer, mode):
+  asyncio.run(CSEServerLoopMain(server, mode))
 
-async def CSEServerLoopMain(server_data : CSEServer):
-  #test_conn = sqlite3.connect("Test.db")
-  #SQLHelpers.CreateTable(test_conn, "TestTable", SQLEntities.SQLOrderHistory)
-  #test_order = SQLEntities.SQLOrderHistory()
-  #test_order.m_ID = 1
-  #test_order.m_Date = (test_order.m_Date + datetime.timedelta(days=1))
-  #SQLHelpers.InsertOrUpdateInstanceInTable(test_conn, "TestTable", test_order)
-  #test_conn.commit()
-  #test_get = SQLHelpers.GetEntityById(test_conn, "TestTable", SQLEntities.SQLOrderHistory, test_order.m_ID)
-  #sqlite3.Time
-
-  # Make sure the master db is unlocked
-  clear_conn = SQLHelpers.Connect(CSECommon.MASTER_DB_PATH)
-  clear_conn.commit()
-  clear_conn.close()
-  
+async def CSEServerLoopMain(server_data : CSEServer, mode : str):
   server_data.m_Connector = aiohttp.TCPConnector(limit=50)
   server_data.m_ClientSession = aiohttp.ClientSession(connector=server_data.m_Connector)
-  
+  server_data.m_Mode = mode
+
   server_data.m_LockFlask.acquire()
 
   # Get existing scrape from file
@@ -294,8 +277,9 @@ async def CSEServerLoopMain(server_data : CSEServer):
   CSEFileSystem.ReadObjectFromFileJson(CSECommon.CLIENT_MODEL_FILE_PATH, server_data.m_ClientModel)
 
   # Deserialize market model
-  CSELogging.Log("READING MARKET MODEL FROM FILE", __file__)
-  CSEFileSystem.ReadObjectFromFileJson(CSECommon.MARKET_MODEL_FILE_PATH, server_data.m_MarketModel)
+  if server_data.m_Mode != CSECommon.MODE_QUERY_ONLY:
+    CSELogging.Log("READING MARKET MODEL FROM FILE", __file__)
+    CSEFileSystem.ReadObjectFromFileJson(CSECommon.MARKET_MODEL_FILE_PATH, server_data.m_MarketModel)
 
   # Deserialize character model
   CSELogging.Log("CREATING CHARACTER MODEL", __file__)
@@ -325,11 +309,11 @@ async def CSEServerLoopMain(server_data : CSEServer):
     
     break
 
-  server_data.m_WorkerFileWriter.m_FuncQueue.put_nowait(CSEServerFileWriter.Main)
-  server_data.m_WorkerFileWriter.Wake()
-
-  server_data.m_WorkerSafety.m_FuncQueue.put_nowait(CSESafetyChecker.Main)
-  server_data.m_WorkerSafety.Wake()
+  if server_data.m_Mode != CSECommon.MODE_QUERY_ONLY:
+    server_data.m_WorkerFileWriter.m_FuncQueue.put_nowait(CSEServerFileWriter.Main)
+    server_data.m_WorkerFileWriter.Wake()
+    server_data.m_WorkerSafety.m_FuncQueue.put_nowait(CSESafetyChecker.Main)
+    server_data.m_WorkerSafety.Wake()
 
   scrape_region_ids = list(server_data.m_MapModel.GetMajorHubRegionIds())
   #scrape_region_ids = list(server_data.m_MapModel.GetAllRegionIds())[5:]
@@ -357,7 +341,7 @@ async def CSEServerLoopMain(server_data : CSEServer):
       os.abort()
 
     # Manage order scraping
-    if server_data.m_WorkerOrderScraper.IsSleeping():
+    if server_data.m_WorkerOrderScraper.IsSleeping() and server_data.m_Mode != CSECommon.MODE_QUERY_ONLY:
       if not server_data.m_WorkerOrderScraper.m_RetQueue.empty():
         region_scrape : CSEScrapeHelper.RegionOrdersScrape = server_data.m_WorkerOrderScraper.m_RetQueue.get_nowait()
         server_data.m_OrderProcessingQueue.append(region_scrape)
@@ -385,13 +369,6 @@ async def CSEServerLoopMain(server_data : CSEServer):
 
     
     CSEServerModelUpdateHelper.ApplyAllUpdates(server_data.m_ModelUpdateQueue, server_data.m_MarketModel, server_data.m_ClientModel, server_data.m_MapModel, server_data.m_CharacterModel)
-
-    # Test db locking
-    test_conn = SQLHelpers.Connect(CSECommon.MASTER_DB_PATH)
-    test_item_id = 41
-    cursor = test_conn.execute(f'SELECT * FROM {CSECommon.TABLE_CURRENT_ORDERS} WHERE m_ItemId = ?', (test_item_id,))
-    sale_records : list[SQLEntities.SQLSaleRecord] = SQLHelpers.ConstructInstancesFromCursor(cursor, SQLEntities.SQLOrder)
-    test_conn.close()
 
     # Let http messages get processed
     server_data.m_LockFlask.release()

@@ -22,6 +22,7 @@ class CSEClientCharacter:
     self.m_CharacterId = 0
     self.m_CharacterName = ""
     self.m_Type = CSECommon.CHAR_TYPE_INVALID
+    self.m_LoggedIn = False
 
 class CSEClientSerializedValues:
   def __init__(self) -> None:
@@ -39,7 +40,7 @@ class CSEClient:
     self.m_ClientSettings = CSEClientSettings.Settings()
     self.m_Lock = threading.Lock()
     self.m_State = CLIENT_STATE_PRE
-    self.m_ProfitableResult = CSEHTTP.GetProfitableRouteResponse()
+    self.m_ProfitableResult = CSEHTTP.CSEProfitableResult()
 
   def TransitionMain(self):
     print("Select an option below: ") 
@@ -182,9 +183,23 @@ class CSEClient:
     if res_dict:
       res = CSEHTTP.CharactersResponse()
       CSECommon.FromJson(res, res_dict)
-      with self.m_Lock:
-        for id, name, type in res.m_CharacterIds, res.m_CharaterNames, res.m_CharacterTypes:
-          new_char = CSEClientCharacter()
-          new_char.m_CharacterId = id
-          new_char.m_CharacterName = name
-          new_char.m_Type = type
+      if len(res.m_CharacterIds) == 0:
+        return
+      for id, name, type, logged_in in zip(res.m_CharacterIds, res.m_CharaterNames, res.m_CharacterTypes, res.m_CharacterLoggedIn):
+        new_char = CSEClientCharacter()
+        new_char.m_CharacterId = id
+        new_char.m_CharacterName = name
+        new_char.m_Type = type
+        new_char.m_LoggedIn = logged_in
+        self.m_Characters.append(new_char)
+  
+  def RetrieveOpportunities(self):
+    request = CSEHTTP.GetProfitableRoute()
+    request.m_UUID = self.m_UUID
+    request_json = json.dumps(request, cls=CSECommon.GenericEncoder)
+    res_json = CSECommon.DecodeJsonFromURL(CSECommon.SERVER_PROFITABLE_URL, json=request_json)
+    if res_json:
+      res = CSEHTTP.GetProfitableRouteResponse()
+      CSECommon.FromJson(res, res_json)
+      if res.m_ProfitableResult.m_Valid:
+        self.m_ProfitableResult = res.m_ProfitableResult

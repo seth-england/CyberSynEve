@@ -30,11 +30,34 @@ class CSEProfitableResultEntry:
   def SortFunc(self):
     return self.m_RateOfProfit
 
+class ProfitableTrade:
+  def __init__(self):
+    self.m_ItemName = ""
+    self.m_StartRegionName = ""
+    self.m_EndRegionName = ""
+    self.m_ItemID = 0
+    self.m_StartRegionID = 0
+    self.m_StartBuy = False
+    self.m_StartAveragePrice = 0.0
+    self.m_EndRegionID = 0
+    self.m_ItemCount = 0
+    self.m_Profit = 0.0
+    self.m_RateOfProfit = 0.0
+    self.m_EndAveragePrice = 0.0
+    self.m_StartTotalPrice = 0.0
+    self.m_EndTotalPrice = 0.0
+    self.m_ItemVolume = 0
+    self.m_CharID = 0
+    self.m_Valid = False
+  
+  def SortByRateOfProfit(self):
+    return self.m_RateOfProfit
+
 class CSEProfitableResult:
   def __init__(self) -> None:
+    self.m_ProfitableTradesValueType = ProfitableTrade
+    self.m_ProfitableTrades = list[self.m_ProfitableTradesValueType]()
     self.m_Valid = False
-    self.m_EntriesValueType = CSEProfitableResultEntry
-    self.m_Entries = list[self.m_EntriesValueType]()
 
 class CheckLoginRequest:
   def __init__(self):

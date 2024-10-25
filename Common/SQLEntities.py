@@ -11,7 +11,7 @@ class SQLOrder:
     self.m_LocationID = 0
     self.m_MinVolume = 0
     self.m_Price = 0.0
-    self.m_Range = 0
+    self.m_Range = "INVALID"
     self.m_SystemID = 0
     self.m_ItemID = 0
     self.m_VolumeRemain = 0

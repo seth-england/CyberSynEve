@@ -9,11 +9,17 @@ import inspect
 import json
 import requests
 import CSELogging
+import socket
+
+hostname = socket.getfqdn()
+local_ip = socket.gethostbyname_ex(hostname)[2][0]
+DB_URL = '192.168.50.225'
+if local_ip == DB_URL:
+  DB_URL = '127.0.0.1'
 
 # Server Locations
 #SERVER_URL = 'http://192.168.50.225:5000'
 SERVER_URL = 'http://127.0.0.1:5000'
-#SERVER_URL = 'http://0.0.0.0:5000'
 SERVER_AUTH_ENDPOINT = '/auth'
 SERVER_AUTH_URL = SERVER_URL + SERVER_AUTH_ENDPOINT
 SERVER_CHECK_LOGIN_ENDPOINT = '/checklogin'
@@ -96,6 +102,11 @@ MASTER_DB_PATH = FILES_ROOT_PATH + '/CSEMasterDB.db'
 TABLE_ORDER_HISTORY = "OrderHistory"
 TABLE_CURRENT_ORDERS = "CurrentOrders"
 TABLE_SALE_RECORD = "SaleRecords"
+
+#Modes
+MODE_DEFAULT = 'cse_mode_default'
+MODE_QUERY_ONLY = 'cse_mode_query'
+MODE_SCRAPE_ONLY = 'cse_mode_scrape'
 
 def SetObjectFromDict(self, dictionary):
   for key, value in dictionary.items():

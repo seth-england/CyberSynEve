@@ -12,13 +12,13 @@ import threading
 import CSEClientSettings
 import CSEFileSystem
 import CSEClient
+import MenuMain
 
 client = CSEClient.CSEClient()
 
 def PingThread():
   while True:
     client.PingServer()
-    #client.RetrieveCharacters()
     time.sleep(CSECommon.PING_PERIOD)
 
 # Read the client serialized values from the disk
@@ -38,16 +38,26 @@ CSEFileSystem.WriteObjectJsonToFilePath(CSECommon.CLIENT_SETTINGS_FILE_PATH, cli
 client.m_PingThread = threading.Thread(target=PingThread, args=())
 client.m_PingThread.start()
 
-client.TransitionMain()
+#client.TransitionMain()
+menu = MenuMain.MenuMain()
+menu.Start(client)
 
+def StartMenu(next_menu):   
+  if next_menu:
+    if next_menu.m_NeedsChars:
+      client.RetrieveCharacters()
+    if next_menu.m_NeedsOpportunities:
+      client.RetrieveOpportunities()
+    next_menu.Start(client)
+    
 # Main Loop
 while True:
   user_input = input()
 
-  match client.m_State:
-    case CSEClient.CLIENT_STATE_MAIN:
-      client.UpdateMain(user_input)
-    case CSEClient.CLIENT_STATE_PROFITABLE:
-      client.UpdateProfitable(user_input)
-    case CSEClient.CLIENT_STATE_CHAR_TYPE:
-      client.UpdateCharType(user_input)
+  with client.m_Lock:
+    menu.Update(user_input)
+    next_menu = menu.GetNextMenu()     
+    while next_menu:
+      StartMenu(next_menu)
+      menu = next_menu
+      next_menu = menu.GetNextMenu()

@@ -16,18 +16,13 @@ import CSEHTTP
 import threading
 import signal
 import time
+import sys
 from flask import Flask, request, jsonify
 from base64 import b64encode
 from telnetlib import NOP
 app = Flask(__name__)
 
 CLIENT_SECRET = 'EfdmhqJg7vncmfAEshRANS4wMtcawguFLGZSyJ9Z'
-
-#class CSEServer:
-#  def __init__(self) -> None:
-#    self.m_ServerToLoopQueue : multiprocessing.Queue = None
-#    self.m_LoopProcess : multiprocessing.Process = None
-
 server = CSEServer.CSEServer()
 
 @app.route(CSECommon.SERVER_SAFETY_ENDPOINT)
@@ -182,11 +177,8 @@ def MarketBalance():
       return "", CSECommon.NOT_FOUND_CODE
   return "", CSECommon.NOT_FOUND_CODE
 
-server.m_Thread = threading.Thread(target=CSEServer.Main, args=(server,))
-server.m_Thread.start()
-print("CSEServer STARTED SERVER LOOP")
-
-#CSEScraper.Init()
-#g_MapModel = CSEMapModel.CSEMapModel()
-#g_MapModel.CreateFromScrape(CSEScraper.CurrentScrape)
-#print("Server Init Done")
+def Start(mode):
+  server.m_Thread = threading.Thread(target=CSEServer.Main, args=(server, mode))
+  server.m_Thread.start()
+  print("CSEServer STARTED SERVER LOOP")
+  return app

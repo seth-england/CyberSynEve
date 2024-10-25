@@ -1,7 +1,13 @@
-import sqlite3
+import mysql.connector.cursor
+import CSECommon
+import mysql.connector
+import mysql.connector.abstracts
 import inspect
 import os
 import datetime
+
+Connection = mysql.connector.MySQLConnection
+Cursor = mysql.connector.cursor.MySQLCursor
 
 class EntityAttribute:
   def __init__(self, name : str, type : str, default_value):
@@ -10,20 +16,21 @@ class EntityAttribute:
     self.m_DefaultValue = default_value
     self.m_ActualValue = default_value
 
-def Connect(db_path : str) -> sqlite3.Connection:
-  return sqlite3.connect(db_path, autocommit=False, timeout=1000)
+def Connect() -> Connection:
+  conn = mysql.connector.connect(host=CSECommon.DB_URL, user='CSE', password='Dunayevskaya1!', database="Main", buffered=True)
+  return conn
 
 def TypeStringFromType(basic_type : type) -> str or None:
   if basic_type == int:
-    return "INTEGER"
+    return "BIGINT"
   elif basic_type == str:
-    return "TEXT"
+    return "VARCHAR(255)"
   elif basic_type == float:
-    return "REAL"
+    return "DOUBLE"
   elif basic_type == datetime.datetime:
-    return "TIMESTAMP"
+    return "DATETIME"
   elif basic_type == bool:
-    return "INTEGER"
+    return "TINYINT"
   else:
     return None
 
@@ -44,12 +51,17 @@ def EntityAttributes(entity_type) -> list[EntityAttribute]:
 def EntityAttributeString(names : list[EntityAttribute]) -> str:
   result = ""
   count = len(names)
+  primary_key = None
   for i, name in enumerate(names):
     result += f'{name.m_MemberName} {name.m_MemberType}'
     if name.m_MemberName == "m_ID":
-      result += " PRIMARY KEY"
-    if i < (count - 1):
+      primary_key = name
+    if i < (count - 1) or primary_key:
       result += ', '
+
+  if primary_key:
+    result += f'PRIMARY KEY ({primary_key.m_MemberName})'
+
   return result
 
 def EntityAttributeNamesString(names : list[EntityAttribute]) -> str:
@@ -61,8 +73,8 @@ def EntityAttributeNamesString(names : list[EntityAttribute]) -> str:
       result += ', '
   return result
 
-def GetAttributeNamesFromTable(conn : sqlite3.Connection, table_name : str) -> list[str]:
-  cursor = conn.execute(f'select * from {table_name}')
+def GetAttributeNamesFromTable(cursor : Cursor, table_name : str) -> list[str]:
+  cursor.execute(f'select * from {table_name} LIMIT 1')
   names = [description[0] for description in cursor.description]
   return names
 
@@ -82,6 +94,10 @@ def InstanceValues(entity_instance) -> list[EntityAttribute]:
 def InstanceValueSet(values: list[EntityAttribute]):
   value_list = []
   for value in values:
+    #if type(value.m_ActualValue) == datetime.datetime:
+    #  time_str = value.m_ActualValue.strftime("%Y-%m-%d %H:%M:%S.%f")
+    #  value_list.append(time_str)
+    #else:
     value_list.append(value.m_ActualValue)
   value_tuple = tuple(value_list)
   return value_tuple
@@ -100,46 +116,45 @@ def InstanceValuesPlaceholderString(values : list[EntityAttribute], names : bool
   res = ''
   for i, value in enumerate(values):
     if names:
-      res += f'{value.m_MemberName}=?'
+      res += f'{value.m_MemberName}=%s'
     else:
-      res += '?'
+      res += '%s'
     if i < (count - 1):
       res += ", "
   return res
 
-def InsertInstanceIntoTable(conn : sqlite3.Connection, table_name : str, entity_instance):
+def InsertInstanceIntoTable(cursor : Cursor, table_name : str, entity_instance):
   entity_attributes = InstanceValues(entity_instance)
   attributes_string = EntityAttributeNamesString(entity_attributes)
   placeholder_string = InstanceValuesPlaceholderString(entity_attributes)
   instance_values_set = InstanceValueSet(entity_attributes)
   sql_string = f'INSERT INTO {table_name} ({attributes_string}) VALUES({placeholder_string})'
-  conn.execute(sql_string, instance_values_set)
+  cursor.execute(sql_string, instance_values_set)
 
-def UpdateInstanceInTable(conn : sqlite3.Connection, table_name : str, entity_instance):
+def UpdateInstanceInTable(cursor : Cursor, table_name : str, entity_instance):
   entity_attributes = InstanceValues(entity_instance)
-  attributes_string = EntityAttributeNamesString(entity_attributes)
   placeholder_string = InstanceValuesPlaceholderString(entity_attributes, True)
   instance_values_set = InstanceValueSet(entity_attributes)
   values_set = (instance_values_set) + (entity_instance.m_ID,)
-  sql_string = f'UPDATE {table_name} SET {placeholder_string} WHERE m_ID = ?'
-  conn.execute(sql_string, values_set)
+  sql_string = f'UPDATE {table_name} SET {placeholder_string} WHERE m_ID = %s'
+  cursor.execute(sql_string, values_set)
 
-def InsertOrUpdateInstanceInTable(conn : sqlite3.Connection, table_name : str, entity_instance):
-  exists = DoesInstanceExistInTable(conn, table_name, entity_instance.m_ID)
+def InsertOrUpdateInstanceInTable(cursor : Cursor, table_name : str, entity_instance):
+  exists = DoesInstanceExistInTable(cursor, table_name, entity_instance.m_ID)
   if exists:
-    UpdateInstanceInTable(conn, table_name, entity_instance)
+    UpdateInstanceInTable(cursor, table_name, entity_instance)
   else:
-    InsertInstanceIntoTable(conn, table_name, entity_instance)
+    InsertInstanceIntoTable(cursor, table_name, entity_instance)
 
-def GetEntityById(conn : sqlite3.Connection, table_name : str, entity_type, id):
-  cursor = conn.execute(F'SELECT * FROM {table_name} WHERE m_ID = ?', (id,))
+def GetEntityById(cursor : Cursor, table_name : str, entity_type, id):
+  cursor.execute(F'SELECT * FROM {table_name} WHERE m_ID = %s', (id,))
   results = ConstructInstancesFromCursor(cursor, entity_type)
   assert len(results) < 2
   if len(results) == 0:
     return None
   return results[0]
 
-def ConstructInstancesFromCursor(cursor : sqlite3.Cursor, entity_type) -> list:
+def ConstructInstancesFromCursor(cursor : Cursor, entity_type) -> list:
   result = list[entity_type]()
   rows = cursor.fetchall()
   for row in rows:
@@ -150,7 +165,7 @@ def ConstructInstancesFromCursor(cursor : sqlite3.Cursor, entity_type) -> list:
       if current_value is not None:
         current_value_type = type(current_value)
         value_type = type(value)
-        if current_value_type == datetime.datetime:
+        if current_value_type == datetime.datetime and value_type == str:
           try:
             value = datetime.datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
           except:
@@ -167,40 +182,37 @@ def ConstructInstancesFromCursor(cursor : sqlite3.Cursor, entity_type) -> list:
   return result
 
 
-def DoesInstanceExistInTable(conn : sqlite3.Connection, table_name : str, id):
-  cursor = conn.execute(f'SELECT * FROM {table_name} WHERE m_ID = ?', (id,))
-  rows = cursor.fetchmany(1)
+def DoesInstanceExistInTable(cursor : Cursor, table_name : str, id):
+  cursor.execute(f'SELECT * FROM {table_name} WHERE m_ID = %s', (id,))
+  rows = cursor.fetchall()
   assert len(rows) < 2
   if len(rows) == 0:
     return False
   else:
     return True
 
-def CreateTable(conn : sqlite3.Connection, table_name : str, entity_type):
+def CreateTable(cursor : Cursor, table_name : str, entity_type):
   try:
     attribute_names = EntityAttributes(entity_type)
     attributes_string = EntityAttributeString(attribute_names)
-    sql_statement = f' CREATE TABLE IF NOT EXISTS {table_name} ({attributes_string});'
-    cursor = conn.execute(sql_statement)
-    conn.commit()
+    sql_statement = f"CREATE TABLE IF NOT EXISTS {table_name} ({attributes_string})"
+    cursor.execute(sql_statement)
 
     # Remove old columns
-    existing_attr_names = GetAttributeNamesFromTable(conn, table_name)
+    existing_attr_names = GetAttributeNamesFromTable(cursor, table_name)
     for existing_attr_name in existing_attr_names:
       matching_names = [name for name in attribute_names if name.m_MemberName == existing_attr_name]
       assert len(matching_names) < 2
       # Column does not exist remove it
       if len(matching_names) == 0:
-        conn.execute(f'ALTER TABLE {table_name} DROP COLUMN {existing_attr_name}')
+        cursor.execute(f'ALTER TABLE {table_name} DROP COLUMN {existing_attr_name}')
 
     # Add new columns
     for new_attr_name in attribute_names:
       matching_names = [name for name in existing_attr_names if name == new_attr_name.m_MemberName]
       assert len(matching_names) < 2
       if len(matching_names) == 0:
-        conn.execute(f'ALTER TABLE {table_name} ADD COLUMN {new_attr_name.m_MemberName} {new_attr_name.m_MemberType}')
+        cursor.execute(f'ALTER TABLE {table_name} ADD COLUMN {new_attr_name.m_MemberName} {new_attr_name.m_MemberType}')
 
-    conn.commit()
-
-  except sqlite3.Error as e:
+  except mysql.connector.Error as e:
     print(e)

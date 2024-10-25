@@ -4,9 +4,8 @@
 import CSEScrapeHelper
 import CSECommon
 import CSEMessages
-import sqlite3
 import SQLEntities
-import SQLHelpers
+import MySQLHelpers
 from datetime import datetime, timedelta
 
 class ItemOrder:
@@ -87,12 +86,49 @@ class MarketModel:
     self.m_RegionIdToRegionDataValueType = RegionData
     self.m_RegionIdToRegionData = dict[int, self.m_RegionIdToRegionDataValueType]()
 
-  def GetRecentItemData(self, conn : sqlite3.Connection, region_id : int, item_id : int, time_delta : timedelta) -> RecentItemData:
+  def GetRecentItemDataFromRegions(self, cursor : MySQLHelpers.Cursor, region_ids : list[int], item_ids : list[int], time_delta : timedelta) -> dict[int, dict[int, RecentItemData]]:
+    now = datetime.utcnow()
+    cutoff = now - time_delta
+    result = dict[int, dict[int, RecentItemData]]()
+    region_format_string = ','.join(['%s'] * len(region_ids))
+    item_format_string = ','.join(['%s'] * len(item_ids))
+    statement = (f'SELECT * FROM {CSECommon.TABLE_SALE_RECORD} WHERE m_RegionID IN (%s) AND m_ItemID IN (%s)') % (region_format_string, item_format_string) + 'AND m_Date > %s ORDER BY m_RegionID, m_ItemID'
+    all_args_tuple = tuple(region_ids) + tuple(item_ids) + (cutoff,)
+    cursor.execute(statement, all_args_tuple)
+    all_sales : list[SQLEntities.SQLSaleRecord] = MySQLHelpers.ConstructInstancesFromCursor(cursor, SQLEntities.SQLSaleRecord)
+    current_recent_item_data = None
+    for sale in all_sales:
+      if current_recent_item_data is None or sale.m_RegionID != current_recent_item_data.m_RegionID or sale.m_ItemID != current_recent_item_data.m_ItemID:
+        if current_recent_item_data:
+          if current_recent_item_data.m_RecentBuyVolume > 0:
+            current_recent_item_data.m_RecentBuyAveragePrice = current_recent_item_data.m_RecentBuyTotalPrice / current_recent_item_data.m_RecentBuyVolume
+          if current_recent_item_data.m_RecentSellVolume > 0:
+            current_recent_item_data.m_RecentSellAveragePrice = current_recent_item_data.m_RecentSellTotalPrice / current_recent_item_data.m_RecentSellVolume
+          item_id_to_data = result.get(current_recent_item_data.m_RegionID)
+          if item_id_to_data is None:
+            item_id_to_data = dict[int, RecentItemData]()
+            result[current_recent_item_data.m_RegionID] = item_id_to_data
+          item_id_to_data[current_recent_item_data.m_ItemID] = current_recent_item_data
+        current_recent_item_data = RecentItemData()
+        current_recent_item_data.m_RegionID = sale.m_RegionID
+        current_recent_item_data.m_ItemID = sale.m_ItemID
+      if sale.m_BuyOrder:
+        current_recent_item_data.m_RecentBuyVolume += sale.m_Volume
+        current_recent_item_data.m_RecentBuyTotalPrice += (sale.m_Price * sale.m_Volume)
+        current_recent_item_data.m_RecentBuyOrderCount += 1
+      else:
+        current_recent_item_data.m_RecentSellVolume += sale.m_Volume
+        current_recent_item_data.m_RecentSellTotalPrice += (sale.m_Price * sale.m_Volume)
+        current_recent_item_data.m_RecentSellOrderCount += 1
+    return result   
+
+
+  def GetRecentItemData(self, cursor : MySQLHelpers.Cursor, region_id : int, item_id : int, time_delta : timedelta) -> RecentItemData:
     now = datetime.utcnow()
     cutoff = now - time_delta
     result = RecentItemData()
-    cursor = conn.execute(f'SELECT * FROM {CSECommon.TABLE_SALE_RECORD} WHERE m_RegionID = ? AND m_ItemID = ? AND m_Date > ?', (region_id, item_id, cutoff))
-    all_relevant_sales : list[SQLEntities.SQLSaleRecord] = SQLHelpers.ConstructInstancesFromCursor(cursor, SQLEntities.SQLSaleRecord)
+    cursor.execute(f'SELECT * FROM {CSECommon.TABLE_SALE_RECORD} WHERE m_RegionID = %s AND m_ItemID = %s AND m_Date > %s', (region_id, item_id, cutoff))
+    all_relevant_sales : list[SQLEntities.SQLSaleRecord] = MySQLHelpers.ConstructInstancesFromCursor(cursor, SQLEntities.SQLSaleRecord)
     for sale in all_relevant_sales:
       result.m_ItemID = sale.m_ItemID
       result.m_RegionID = sale.m_RegionID
@@ -113,26 +149,24 @@ class MarketModel:
 
     return result
   
-  def GetItemIdsFromRegionId(self, conn : sqlite3.Connection, region_id : int) -> list[int]:
+  def GetItemIdsFromRegionId(self, cursor : MySQLHelpers.Cursor, region_id : int) -> list[int]:
     result = list[int]()
-    cursor = conn.execute(f'SELECT DISTINCT m_ItemID FROM {CSECommon.TABLE_CURRENT_ORDERS} WHERE m_RegionID = ?', (region_id,))
-    from_current_orders : list[SQLEntities.SQLOrder] = SQLHelpers.ConstructInstancesFromCursor(cursor, SQLEntities.SQLOrder)
-    cursor = conn.execute(f'SELECT DISTINCT m_ItemID FROM {CSECommon.TABLE_SALE_RECORD} WHERE m_RegionID = ?', (region_id,))
-    from_sale_record : list[SQLEntities.SQLSaleRecord] = SQLHelpers.ConstructInstancesFromCursor(cursor, SQLEntities.SQLSaleRecord)
-    result = [order.m_ItemID for order in from_current_orders] + [order.m_ItemID for order in from_sale_record]
+    cursor.execute(f'SELECT * FROM {CSECommon.TABLE_CURRENT_ORDERS} WHERE m_RegionID = %s', (region_id,))
+    from_current_orders : list[SQLEntities.SQLOrder] = MySQLHelpers.ConstructInstancesFromCursor(cursor, SQLEntities.SQLOrder)
+    result = [order.m_ItemID for order in from_current_orders]
     result = list(set(result))
     return result
 
-  def GetSellOrderCount(self, conn : sqlite3.Connection, region_id : int, item_id : int) -> int:
+  def GetSellOrderCount(self, cursor : MySQLHelpers.Cursor, region_id : int, item_id : int) -> int:
     result = 0
-    cursor = conn.execute(f'SELECT * FROM {CSECommon.TABLE_CURRENT_ORDERS} WHERE m_RegionID = ? AND m_ItemID = ?', (region_id, item_id))
+    cursor.execute(f'SELECT * FROM {CSECommon.TABLE_CURRENT_ORDERS} WHERE m_RegionID = %s AND m_ItemID = %s', (region_id, item_id))
     rows = cursor.fetchall()
     result = len(rows)
     return result
 
-def ProcessRegionOrderScrape(scrape : CSEScrapeHelper.RegionOrdersScrape, conn : sqlite3.Connection):
-  SQLHelpers.CreateTable(conn, CSECommon.TABLE_CURRENT_ORDERS, SQLEntities.SQLOrder)
-  SQLHelpers.CreateTable(conn, CSECommon.TABLE_SALE_RECORD, SQLEntities.SQLSaleRecord)
+def ProcessRegionOrderScrape(scrape : CSEScrapeHelper.RegionOrdersScrape, conn : MySQLHelpers.Connection):
+  MySQLHelpers.CreateTable(conn.cursor(), CSECommon.TABLE_CURRENT_ORDERS, SQLEntities.SQLOrder)
+  MySQLHelpers.CreateTable(conn.cursor(), CSECommon.TABLE_SALE_RECORD, SQLEntities.SQLSaleRecord)
   
   now = datetime.utcnow()
   order_id_to_order = dict[int, SQLEntities.SQLOrder]()
@@ -194,7 +228,7 @@ def ProcessRegionOrderScrape(scrape : CSEScrapeHelper.RegionOrdersScrape, conn :
 
   # Compare the current set of orders with the previous set of orders
   for order_id, order in order_id_to_order.items():
-    previous_order = SQLHelpers.GetEntityById(conn, CSECommon.TABLE_CURRENT_ORDERS, SQLEntities.SQLOrder, order_id)
+    previous_order = MySQLHelpers.GetEntityById(conn.cursor(), CSECommon.TABLE_CURRENT_ORDERS, SQLEntities.SQLOrder, order_id)
     if previous_order is None:
       continue
 
@@ -210,13 +244,13 @@ def ProcessRegionOrderScrape(scrape : CSEScrapeHelper.RegionOrdersScrape, conn :
       sale_record.m_Date = now
       sale_record.m_Price = order.m_Price
       sale_record.m_Volume = volume_diff
-      SQLHelpers.InsertOrUpdateInstanceInTable(conn, CSECommon.TABLE_SALE_RECORD, sale_record)
+      MySQLHelpers.InsertOrUpdateInstanceInTable(conn.cursor(), CSECommon.TABLE_SALE_RECORD, sale_record)
     
-  conn.execute(f'DELETE FROM {CSECommon.TABLE_CURRENT_ORDERS} WHERE m_RegionID=?', (scrape.m_RegionId,))
+  conn.cursor().execute(f'DELETE FROM {CSECommon.TABLE_CURRENT_ORDERS} WHERE m_RegionID=%s', (scrape.m_RegionId,))
   conn.commit()
 
   for order in order_id_to_order.values():
-    SQLHelpers.InsertOrUpdateInstanceInTable(conn, CSECommon.TABLE_CURRENT_ORDERS, order)
+    MySQLHelpers.InsertOrUpdateInstanceInTable(conn.cursor(), CSECommon.TABLE_CURRENT_ORDERS, order)
 
   conn.commit()
     

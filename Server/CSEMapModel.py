@@ -125,6 +125,18 @@ class MapModel:
     metropolis_id = self.GetRegionIdByName("Metropolis")
     if metropolis_id:
       result = result.union(set[int]({metropolis_id}))
+    curse_id = self.GetRegionIdByName("Curse")
+    if curse_id:
+      result = result.union(set[int]({curse_id}))
+    delve_id = self.GetRegionIdByName("Delve")
+    if delve_id:
+      result = result.union(set[int]({delve_id}))
+    stain_id = self.GetRegionIdByName("Stain")
+    if stain_id:
+      result = result.union(set[int]({stain_id}))
+    venal_id = self.GetRegionIdByName("Venal")
+    if venal_id:
+      result = result.union(set[int]({venal_id}))  
     return result
     
   def GetRegionIdByName(self, name: str) -> int or None:
@@ -170,7 +182,7 @@ class MapModel:
   def DeserializeRouteData(self, file_path : str):
     CSEFileSystem.ReadObjectFromFileJson(file_path, self.m_RouteData)
   
-  def GetRegionById(self, region_id : int) -> CSERegionData or None:
+  def GetRegionById(self, region_id : int) -> CSERegionData | None:
     return self.m_RegionIdToRegion.get(region_id)
   
   def GetRegionName(self, region_id : int) -> str:

@@ -11,12 +11,13 @@ import CSECharacterModel
 import Workers.CSEServerWorker as CSEServerWorker
 import sqlite3
 import SQLHelpers
+import MySQLHelpers
 
 def Main(worker : CSEServerWorker.Worker, uuid : str):
   CSEServerModelUpdateHelper.ApplyAllUpdates(worker.m_ModelUpdateQueue, worker.m_AllModels.m_MarketModel, worker.m_AllModels.m_ClientModel, worker.m_AllModels.m_MapModel, worker.m_AllModels.m_CharacterModel)
   client_update_message = CSEClientModel.UpdateClientResponse()
   client_update_message.m_UUID = uuid
-  conn = SQLHelpers.Connect(CSECommon.MASTER_DB_PATH)
+  conn = MySQLHelpers.Connect()
   character_ids = worker.m_AllModels.m_ClientModel.GetCharacterIds(client_update_message.m_UUID)
   for character_id in character_ids:
     char_data = worker.m_AllModels.m_CharacterModel.GetCharDataById(character_id)
@@ -94,32 +95,36 @@ def Main(worker : CSEServerWorker.Worker, uuid : str):
     worker.m_MsgSystem.QueueModelUpdateMessage(char_update_message)
 
     # Run profitable query
-    if char_data.m_Type == CSECommon.CHAR_TYPE_HAULER:
-      client = worker.m_AllModels.m_ClientModel.GetClientByUUID(client_update_message.m_UUID)
-      client_settings = CSEClientSettings.Settings()
-      max_ship_volume = None
-      ship_item = worker.m_AllModels.m_ItemModel.GetItemDataFromID(char_update_message.m_ShipId)
-      if ship_item:
-        max_ship_volume = ship_item.m_Capacity
-      if client:
-        client_settings = client.m_Settings         
-      if region_id:
-        client_update_message.m_ProfitableQueryResult = \
-        CSEProfitableQuery.ProfitableQuery\
-        ( \
-          conn,
-          worker.m_AllModels.m_MapModel, 
-          worker.m_AllModels.m_MarketModel, 
-          worker.m_AllModels.m_ItemModel,
-          worker.m_AllModels.m_CharacterModel,
-          character_ids,
-          region_id,
-          pct_of_recent_volume_limit=client_settings.m_ProfitableSettings.m_PctOfRecentVolume,
-          max_ship_volume=max_ship_volume, 
-          min_order_count=client_settings.m_ProfitableSettings.m_MinOrderCount,
-          min_profit=client_settings.m_ProfitableSettings.m_MinProfit,
-          min_profit_rate=client_settings.m_ProfitableSettings.m_MinRateOfProfit
-        ) 
+    client = worker.m_AllModels.m_ClientModel.GetClientByUUID(client_update_message.m_UUID)
+    client_settings = CSEClientSettings.Settings()
+    max_ship_volume = None
+    ship_item = worker.m_AllModels.m_ItemModel.GetItemDataFromID(char_update_message.m_ShipId)
+    if ship_item:
+      max_ship_volume = ship_item.m_Capacity
+    if client:
+      client_settings = client.m_Settings         
+    if region_id:
+      profitable_result = \
+      CSEProfitableQuery.ProfitableQuery\
+      ( \
+        conn,
+        worker.m_AllModels.m_MapModel, 
+        worker.m_AllModels.m_MarketModel, 
+        worker.m_AllModels.m_ItemModel,
+        worker.m_AllModels.m_CharacterModel,
+        character_ids,
+        character_id,
+        region_id,
+        pct_of_recent_volume_limit=client_settings.m_ProfitableSettings.m_PctOfRecentVolume,
+        max_ship_volume=max_ship_volume, 
+        min_order_count=client_settings.m_ProfitableSettings.m_MinOrderCount,
+        min_profit=client_settings.m_ProfitableSettings.m_MinProfit,
+        min_profit_rate=client_settings.m_ProfitableSettings.m_MinRateOfProfit
+      )
+      if profitable_result.m_Valid:
+        client_update_message.m_ProfitableQueryResult.m_Valid = True
+        client_update_message.m_ProfitableQueryResult.m_ProfitableTrades += profitable_result.m_ProfitableTrades
+
 
   # Market balance query
   profitable_query_transactions = list()

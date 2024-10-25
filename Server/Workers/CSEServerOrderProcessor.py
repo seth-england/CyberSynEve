@@ -4,10 +4,10 @@ import CSEScrapeHelper
 import CSEMarketModel
 import sqlite3
 import CSECommon
-import SQLHelpers
+import MySQLHelpers
 
 def Main(worker : CSEServerWorker.Worker, region_scrape : CSEScrapeHelper.RegionOrdersScrape):
-  conn = SQLHelpers.Connect(CSECommon.MASTER_DB_PATH)
+  conn = MySQLHelpers.Connect()
   CSEMarketModel.ProcessRegionOrderScrape(region_scrape, conn)
   conn.commit()
   conn.close()
