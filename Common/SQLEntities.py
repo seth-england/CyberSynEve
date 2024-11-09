@@ -40,3 +40,4 @@ class SQLSaleRecord:
     self.m_Date = datetime.datetime.utcnow()
     self.m_Price = 0.0
     self.m_Volume = 0
+    self.m_LocationID = 0

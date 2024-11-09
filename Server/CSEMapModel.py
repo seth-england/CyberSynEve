@@ -46,12 +46,19 @@ class RouteData:
     self.m_SystemIdToSystemIdToShortestRoute = dict[int, dict[int, list[int]]]()
     self.m_LastSafetyUpdate = CSEMessages.SafetyUpdated()
 
+class CSEStationData:
+  def __init__(self) -> None:
+    self.m_Name = "Invalid"
+    self.m_Id = 0
+    self.m_SystemId = 0
+
 class MapModel:
   def __init__(self):
     self.m_RegionIdToRegion = dict[int, CSERegionData]()
     self.m_SystemIdToSystem = dict[int, CSESystemData]()
     self.m_ConstellationIdToConstellation = dict[int, CSEConstellationData]()
     self.m_StargateIdToStargate = dict[int, CSEStargateData]()
+    self.m_StationIdToStation = dict[int, CSEStationData]()
     self.m_RouteData = RouteData()
 
   def GetSystemIds(self) -> list[int]:
@@ -138,12 +145,47 @@ class MapModel:
     if venal_id:
       result = result.union(set[int]({venal_id}))  
     return result
-    
-  def GetRegionIdByName(self, name: str) -> int or None:
+
+  def GetMajorHubStationIds(self) -> set[int]:
+    result = set[int]()
+    jita_hub_id = self.GetStationIdByName("Jita IV - Moon 4 - Caldari Navy Assembly Plant")
+    if jita_hub_id:
+      result = result.union(set[int]({jita_hub_id}))
+    amarr_hub_id = self.GetStationIdByName("Amarr VIII (Oris) - Emperor Family Academy")
+    if amarr_hub_id:
+      result = result.union(set[int]({amarr_hub_id}))
+    rens_hub_id = self.GetStationIdByName("Rens VI - Moon 8 - Brutor Tribe Treasury")
+    if rens_hub_id:
+      result = result.union(set[int]({rens_hub_id}))
+    dodixie_hub_id = self.GetStationIdByName("Dodixie IX - Moon 20 - Federation Navy Assembly Plant")
+    if dodixie_hub_id:
+      result = result.union(set[int]({dodixie_hub_id}))
+    hek_hub_id = self.GetStationIdByName("Hek VIII - Moon 12 - Boundless Creation Factory")
+    if hek_hub_id:
+      result = result.union(set[int]({hek_hub_id}))    
+    return result
+  
+  def RegionIdToHubId(self, region_id : int, station_ids : list[int]) -> int | None:
+    for station_id in station_ids:
+      station = self.m_StationIdToStation.get(station_id)
+      if station:
+        system = self.m_SystemIdToSystem.get(station.m_SystemId)
+        if system:
+          if system.m_RegionId == region_id:
+            return station_id
+    return None
+
+  def GetRegionIdByName(self, name: str) -> int | None:
     for region in self.m_RegionIdToRegion.values():
       if region.m_Name == name:
         return region.m_Id
     return None
+
+  def GetStationIdByName(self, name: str) -> int | None:
+    for station in self.m_StationIdToStation.values():
+      if station.m_Name == name:
+        return station.m_Id
+    return None    
   
   # Returns a list of system ids
   def GetRouteData(self, origin_system_id, dest_system_id, msg_system : CSEServerMessageSystem.MessageSystem) -> list[int] | None:    
@@ -238,5 +280,19 @@ class MapModel:
       system_entry.m_X = position_dict['x']
       system_entry.m_Z = position_dict['z']
       self.m_SystemIdToSystem[system_entry.m_Id] = system_entry
+
+    # Gather the stations
+    for station_dict in scrape.m_StationsScrape.m_StationIdToDict.values():
+      station_entry = CSEStationData()
+      station_id = station_dict.get('station_id')
+      if station_id:
+        station_entry.m_Id = station_id
+      name = station_dict.get('name')
+      if name:
+        station_entry.m_Name = name
+      system_id = station_dict.get('system_id')
+      if system_id:
+        station_entry.m_SystemId = system_id
+      self.m_StationIdToStation[station_id] = station_entry
     
     return

@@ -37,9 +37,11 @@ class ProfitableTrade:
     self.m_EndRegionName = ""
     self.m_ItemID = 0
     self.m_StartRegionID = 0
+    self.m_StartRegionHubID = 0
     self.m_StartBuy = False
     self.m_StartAveragePrice = 0.0
     self.m_EndRegionID = 0
+    self.m_EndRegionHubID = 0
     self.m_ItemCount = 0
     self.m_Profit = 0.0
     self.m_RateOfProfit = 0.0

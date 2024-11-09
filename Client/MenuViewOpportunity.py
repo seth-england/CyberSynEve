@@ -17,6 +17,10 @@ class MenuViewOpportunity(MenuBase.MenuBase):
   def Start(self, client : CSEClient.CSEClient):
     for i, trade in enumerate(self.m_Opp.m_Trades):
       print(f'{i: 3}.) {trade.m_ItemCount: 4} {trade.m_StartAveragePrice/1000000: 7.3f}m {trade.m_ItemName} ROP: {trade.m_RateOfProfit * 100:.1f}% Profit: {trade.m_Profit/1000000:.1f}m')
+    print("a) Accept opportunity")
       
   def Update(self, user_input : str):
+    user_input = user_input.capitalize()
+    if user_input.find('A') > -1:
+      pass
     self.m_NextMenu = MenuMain.MenuMain()

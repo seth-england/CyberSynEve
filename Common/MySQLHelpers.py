@@ -94,10 +94,6 @@ def InstanceValues(entity_instance) -> list[EntityAttribute]:
 def InstanceValueSet(values: list[EntityAttribute]):
   value_list = []
   for value in values:
-    #if type(value.m_ActualValue) == datetime.datetime:
-    #  time_str = value.m_ActualValue.strftime("%Y-%m-%d %H:%M:%S.%f")
-    #  value_list.append(time_str)
-    #else:
     value_list.append(value.m_ActualValue)
   value_tuple = tuple(value_list)
   return value_tuple

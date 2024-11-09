@@ -286,7 +286,7 @@ async def CSEServerLoopMain(server_data : CSEServer, mode : str):
   CSEFileSystem.ReadObjectFromFileJson(CSECommon.CHARACTER_MODEL_FILE_PATH, server_data.m_CharacterModel)
 
   CSELogging.Log("STARTING THREADS", __file__)
-
+  
   # Listen for model updates
   server_data.m_MsgSystem.RegisterForModelUpdateQueue(os.getpid(), server_data.m_ModelUpdateQueue)
 

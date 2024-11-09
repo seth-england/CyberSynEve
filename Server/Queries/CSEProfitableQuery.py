@@ -40,10 +40,12 @@ def ProfitableQuery(conn : MySQLHelpers.Connection,
     hub_ids = map_model.GetMajorHubRegionIds()
     end_region_ids = hub_ids
 
+  hub_station_ids = map_model.GetMajorHubStationIds()
+
   # Assume that we're going to buy everything in the starting region,
   # create a profitable trade for buying a sell or buy order
   start_region_item_ids = item_model.GetAllItemIds()
-  all_recent_item_data = market_model.GetRecentItemDataFromRegions(conn.cursor(), [starting_region_id] + list(end_region_ids), start_region_item_ids, time_delta)
+  all_recent_item_data = market_model.GetRecentItemDataFromRegions(conn.cursor(), [starting_region_id] + list(end_region_ids), start_region_item_ids, time_delta, hub_station_ids)
   starting_region_recent_item_data = all_recent_item_data.get(starting_region_id)
   if starting_region_recent_item_data is None:
     return result
@@ -121,7 +123,9 @@ def ProfitableQuery(conn : MySQLHelpers.Connection,
       rate_of_profit = profit / buy_price
       if profit > 0.0:
         new_trade = copy.deepcopy(trade)
+        new_trade.m_StartRegionHubID = map_model.RegionIdToHubId(new_trade.m_StartRegionID, hub_station_ids)
         new_trade.m_EndRegionID = end_region.m_Id
+        new_trade.m_EndRegionHubID = map_model.RegionIdToHubId(new_trade.m_EndRegionID, hub_station_ids)
         new_trade.m_EndRegionName = end_region.m_Name
         new_trade.m_ItemCount = item_count
         new_trade.m_Profit = profit

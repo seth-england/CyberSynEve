@@ -83,10 +83,21 @@ def EstimateBuyAndSellVolumeCounts(total_volume : int, low_price : float, avg_pr
 
 class MarketModel:
   def __init__(self) -> None:
-    self.m_RegionIdToRegionDataValueType = RegionData
-    self.m_RegionIdToRegionData = dict[int, self.m_RegionIdToRegionDataValueType]()
+    pass
 
-  def GetRecentItemDataFromRegions(self, cursor : MySQLHelpers.Cursor, region_ids : list[int], item_ids : list[int], time_delta : timedelta) -> dict[int, dict[int, RecentItemData]]:
+  def GetOrderDataFromOrderIds(self, cursor : MySQLHelpers.Cursor, order_ids : set[int]) -> dict[int, SQLEntities.SQLOrder]:
+    statement = f'Select * FROM {CSECommon.TABLE_CURRENT_ORDERS} WHERE m_ID IN (%s)'
+    item_format_string = ','.join(['%s'] * len(order_ids))
+    statement = statement % item_format_string
+    cursor.execute(statement, tuple(order_ids))
+    orders : list[SQLEntities.SQLOrder] = MySQLHelpers.ConstructInstancesFromCursor(cursor, SQLEntities.SQLOrder)
+    result = dict[int, SQLEntities.SQLOrder]()
+    for order in orders:
+      result[order.m_ID] = order
+
+    return result
+
+  def GetRecentItemDataFromRegions(self, cursor : MySQLHelpers.Cursor, region_ids : list[int], item_ids : list[int], time_delta : timedelta, station_ids: set[int] | None = None) -> dict[int, dict[int, RecentItemData]]:
     now = datetime.utcnow()
     cutoff = now - time_delta
     result = dict[int, dict[int, RecentItemData]]()
@@ -98,6 +109,11 @@ class MarketModel:
     all_sales : list[SQLEntities.SQLSaleRecord] = MySQLHelpers.ConstructInstancesFromCursor(cursor, SQLEntities.SQLSaleRecord)
     current_recent_item_data = None
     for sale in all_sales:
+      # Skip sales not in the set of stations we're looking for (usually hubs)
+      if station_ids:
+        if sale.m_LocationID and sale.m_LocationID not in station_ids:
+          continue
+
       if current_recent_item_data is None or sale.m_RegionID != current_recent_item_data.m_RegionID or sale.m_ItemID != current_recent_item_data.m_ItemID:
         if current_recent_item_data:
           if current_recent_item_data.m_RecentBuyVolume > 0:
@@ -121,33 +137,6 @@ class MarketModel:
         current_recent_item_data.m_RecentSellTotalPrice += (sale.m_Price * sale.m_Volume)
         current_recent_item_data.m_RecentSellOrderCount += 1
     return result   
-
-
-  def GetRecentItemData(self, cursor : MySQLHelpers.Cursor, region_id : int, item_id : int, time_delta : timedelta) -> RecentItemData:
-    now = datetime.utcnow()
-    cutoff = now - time_delta
-    result = RecentItemData()
-    cursor.execute(f'SELECT * FROM {CSECommon.TABLE_SALE_RECORD} WHERE m_RegionID = %s AND m_ItemID = %s AND m_Date > %s', (region_id, item_id, cutoff))
-    all_relevant_sales : list[SQLEntities.SQLSaleRecord] = MySQLHelpers.ConstructInstancesFromCursor(cursor, SQLEntities.SQLSaleRecord)
-    for sale in all_relevant_sales:
-      result.m_ItemID = sale.m_ItemID
-      result.m_RegionID = sale.m_RegionID
-      if sale.m_BuyOrder:
-        result.m_RecentBuyVolume += sale.m_Volume
-        result.m_RecentBuyTotalPrice += (sale.m_Price * sale.m_Volume)
-        result.m_RecentBuyOrderCount = result.m_RecentBuyOrderCount + 1
-      else:
-        result.m_RecentSellVolume += sale.m_Volume
-        result.m_RecentSellTotalPrice += (sale.m_Price * sale.m_Volume)
-        result.m_RecentSellOrderCount = result.m_RecentSellOrderCount + 1
-    
-    if result.m_RecentBuyVolume > 0:
-      result.m_RecentBuyAveragePrice = result.m_RecentBuyTotalPrice / result.m_RecentBuyVolume
-    
-    if result.m_RecentSellVolume > 0:
-      result.m_RecentSellAveragePrice = result.m_RecentSellTotalPrice / result.m_RecentSellVolume
-
-    return result
   
   def GetItemIdsFromRegionId(self, cursor : MySQLHelpers.Cursor, region_id : int) -> list[int]:
     result = list[int]()
@@ -244,6 +233,7 @@ def ProcessRegionOrderScrape(scrape : CSEScrapeHelper.RegionOrdersScrape, conn :
       sale_record.m_Date = now
       sale_record.m_Price = order.m_Price
       sale_record.m_Volume = volume_diff
+      sale_record.m_LocationID = order.m_LocationID
       MySQLHelpers.InsertOrUpdateInstanceInTable(conn.cursor(), CSECommon.TABLE_SALE_RECORD, sale_record)
     
   conn.cursor().execute(f'DELETE FROM {CSECommon.TABLE_CURRENT_ORDERS} WHERE m_RegionID=%s', (scrape.m_RegionId,))
