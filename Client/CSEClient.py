@@ -41,6 +41,7 @@ class CSEClient:
     self.m_Lock = threading.Lock()
     self.m_State = CLIENT_STATE_PRE
     self.m_ProfitableResult = CSEHTTP.CSEProfitableResult()
+    self.m_AcceptedOpportunities = list[CSEHTTP.ProfitableTrade]()
 
   def TransitionMain(self):
     print("Select an option below: ") 
@@ -203,3 +204,14 @@ class CSEClient:
       CSECommon.FromJson(res, res_json)
       if res.m_ProfitableResult.m_Valid:
         self.m_ProfitableResult = res.m_ProfitableResult
+
+  def RetrieveAcceptedOpportunities(self, char_ids : list[int]):
+    request = CSEHTTP.AcceptedOpportunitiesRequest()
+    request.m_UUID = self.m_UUID
+    request.m_CharIDs = char_ids
+    request_json = json.dumps(request, cls=CSECommon.GenericEncoder)
+    res_json = CSECommon.DecodeJsonFromURL(CSECommon.SERVER_ACCEPTED_OPP_URL, json=request_json)
+    if res_json:
+      res = CSEHTTP.AcceptedOpportunitiesResponse()
+      CSECommon.FromJson(res, res_json)
+      self.m_AcceptedOpportunities = res.m_Trades

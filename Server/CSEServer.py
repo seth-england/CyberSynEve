@@ -40,9 +40,11 @@ import CSEServerRequestCoordinator
 import Workers.CSESafetyChecker as CSESafetyChecker
 import Workers.CSEServerOrderProcessor
 import datetime
+import CSEHTTP
 from multiprocessing.managers import BaseManager
 from base64 import b64encode
 from telnetlib import NOP
+import MySQLHelpers
 
 CSESERVER_ORDER_SCRAPE_WORKERS_COUNT = 1
 
@@ -76,6 +78,7 @@ class CSEServer:
     self.m_MultiprocessingManager = MultiprocessingManager()
     self.m_ServerRequestCoordinator : CSEServerRequestCoordinator.Coordinator = None
     self.m_Mode = CSECommon.MODE_DEFAULT
+    self.m_DBConn = MySQLHelpers.Connect()
 
   def ScheduleClientUpdate(self, uuid : str):
       client_data = self.m_ClientModel.GetClientByUUID(uuid)
@@ -98,6 +101,9 @@ async def CSEServerLoopMain(server_data : CSEServer, mode : str):
   server_data.m_Mode = mode
 
   server_data.m_LockFlask.acquire()
+
+  # Make sure tables are created
+  MySQLHelpers.CreateTable(server_data.m_DBConn.cursor(), CSECommon.TABLE_ACCEPTED_OPPS, CSEHTTP.ProfitableTrade)
 
   # Get existing scrape from file
   CSELogging.Log("LOADING SCRAPE FROM FILE", __file__)

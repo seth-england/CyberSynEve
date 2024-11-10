@@ -10,6 +10,7 @@ import json
 import requests
 import CSELogging
 import socket
+import datetime
 
 hostname = socket.getfqdn()
 local_ip = socket.gethostbyname_ex(hostname)[2][0]
@@ -26,6 +27,12 @@ SERVER_CHECK_LOGIN_ENDPOINT = '/checklogin'
 SERVER_CHECK_LOGIN_URL = SERVER_URL + SERVER_CHECK_LOGIN_ENDPOINT
 SERVER_PING_ENDPOINT = '/ping'
 SERVER_PING_URL = SERVER_URL + SERVER_PING_ENDPOINT
+SERVER_ACCEPT_OPP_ENDPOINT = '/acceptopp'
+SERVER_ACCEPT_OPP_URL = SERVER_URL + SERVER_ACCEPT_OPP_ENDPOINT
+SERVER_ACCEPTED_OPP_ENDPOINT = '/acceptedopp'
+SERVER_ACCEPTED_OPP_URL = SERVER_URL + SERVER_ACCEPTED_OPP_ENDPOINT
+SERVER_CLEAR_OPPS_ENDPOINT = '/clearopps'
+SERVER_CLEAR_OPPS_URL = SERVER_URL + SERVER_CLEAR_OPPS_ENDPOINT
 SERVER_PROFITABLE_ENDPOINT = '/profitable'
 SERVER_PROFITABLE_URL = SERVER_URL + SERVER_PROFITABLE_ENDPOINT
 SERVER_CLIENT_SETTINGS_ENDPOINT = '/clientsettings'
@@ -77,6 +84,7 @@ FULL_PAGE_ORDER_COUNT = 1000
 SERVER_ERROR_SLEEP_SECONDS = 60
 APP_NAME = "KomissarTest"
 SAFETY_TIME = 3600
+OPPORTUNITY_STANDARD_EXPIRE = datetime.timedelta(days=1)
 
 CHAR_TYPE_HAULER = "HAULER"
 CHAR_TYPE_TRADE_BOT = "TRADE"
@@ -102,11 +110,15 @@ MASTER_DB_PATH = FILES_ROOT_PATH + '/CSEMasterDB.db'
 TABLE_ORDER_HISTORY = "OrderHistory"
 TABLE_CURRENT_ORDERS = "CurrentOrders"
 TABLE_SALE_RECORD = "SaleRecords"
+TABLE_ACCEPTED_OPPS = "AcceptedOpps"
 
 #Modes
 MODE_DEFAULT = 'cse_mode_default'
 MODE_QUERY_ONLY = 'cse_mode_query'
 MODE_SCRAPE_ONLY = 'cse_mode_scrape'
+
+#Dats
+DATETIME_DEFAULT_FORMAT = "%Y-%m-%d %H:%M:%S.%f"
 
 def SetObjectFromDict(self, dictionary):
   for key, value in dictionary.items():
@@ -227,12 +239,17 @@ class GenericEncoder(JSONEncoder):
         elif inspect.ismethod(value) or inspect.isbuiltin(value):
           continue
         if not member_name.startswith('__') and not inspect.ismethod(value) and not type(value) is type:
+          if type(value) is datetime.datetime:
+            value = value.strftime(DATETIME_DEFAULT_FORMAT)
           result_dict[member_name] = value
       return result_dict
     return json.JSONEncoder.default(self, obj)
 
 def ObjectToJsonString(o:object):
-  json_string = json.dumps(o, cls=GenericEncoder)
+  try:
+    json_string = json.dumps(o, cls=GenericEncoder)
+  except Exception as e:
+    pass
   return json_string
 
 def ObjectToJsonDict(o:object):
@@ -308,6 +325,9 @@ def FromJson(o : object, json_dict : dict):
         continue
       elif attr_type is type:
         continue
+      elif attr_type is datetime.datetime:
+        value = datetime.datetime.strptime(value, DATETIME_DEFAULT_FORMAT)
+        o.__setattr__(key, value)
       elif value_type is dict:
         # The member is a dict
         if attr_type is dict:

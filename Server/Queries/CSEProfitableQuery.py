@@ -7,7 +7,14 @@ import sqlite3
 import datetime
 import MySQLHelpers
 import copy
+import uuid
 from CSEHTTP import CSEProfitableResult, CSEProfitableResultEntry, ProfitableTrade
+
+def OppAlreadyExists(in_trade : ProfitableTrade, existing_trades : list[ProfitableTrade]) -> bool:
+  for trade in existing_trades:
+    if in_trade.m_ItemID == trade.m_ItemID and in_trade.m_EndRegionHubID == trade.m_EndRegionHubID:
+      return True
+  return False
 
 def ProfitableQuery(conn : MySQLHelpers.Connection,
                     map_model : CSEMapModel.MapModel,
@@ -30,6 +37,8 @@ def ProfitableQuery(conn : MySQLHelpers.Connection,
   start_region = map_model.GetRegionById(starting_region_id)
   if start_region is None:
     return result
+  
+  main_char_data = char_model.GetCharDataById(main_char_id)
 
   # Build the set of relevent regions
   end_region_ids = list[int]()
@@ -41,6 +50,8 @@ def ProfitableQuery(conn : MySQLHelpers.Connection,
     end_region_ids = hub_ids
 
   hub_station_ids = map_model.GetMajorHubStationIds()
+
+  all_accepted_ops = char_model.GetAcceptedOpps(conn, char_ids, CSECommon.OPPORTUNITY_STANDARD_EXPIRE)
 
   # Assume that we're going to buy everything in the starting region,
   # create a profitable trade for buying a sell or buy order
@@ -123,9 +134,12 @@ def ProfitableQuery(conn : MySQLHelpers.Connection,
       rate_of_profit = profit / buy_price
       if profit > 0.0:
         new_trade = copy.deepcopy(trade)
+        new_trade.m_ID = str(uuid.uuid4())
         new_trade.m_StartRegionHubID = map_model.RegionIdToHubId(new_trade.m_StartRegionID, hub_station_ids)
+        new_trade.m_StartRegionHubName = map_model.GetStationName(new_trade.m_StartRegionHubID)
         new_trade.m_EndRegionID = end_region.m_Id
         new_trade.m_EndRegionHubID = map_model.RegionIdToHubId(new_trade.m_EndRegionID, hub_station_ids)
+        new_trade.m_EndRegionHubName = map_model.GetStationName(new_trade.m_EndRegionHubID)
         new_trade.m_EndRegionName = end_region.m_Name
         new_trade.m_ItemCount = item_count
         new_trade.m_Profit = profit
@@ -133,6 +147,8 @@ def ProfitableQuery(conn : MySQLHelpers.Connection,
         new_trade.m_EndAveragePrice = sell_unit_price
         new_trade.m_StartTotalPrice = buy_price
         new_trade.m_EndTotalPrice = sell_price
+        if main_char_data:
+          new_trade.m_CharName = main_char_data.m_CharacterName
         new_trade.m_Valid = True
         all_possible_trades.append(new_trade)
 
@@ -142,7 +158,8 @@ def ProfitableQuery(conn : MySQLHelpers.Connection,
       continue
     for char_id in char_ids:
       already_listed = char_model.HasSellOrderForItemInRegion(char_id, trade.m_ItemID, trade.m_EndRegionID)
-      if already_listed:
+      opp_exists = OppAlreadyExists(trade, all_accepted_ops)
+      if already_listed or opp_exists:
         trade.m_Valid = False
         break
   

@@ -1,5 +1,4 @@
-- Show profitable orders from every region
-- Estimate number of sales that're from sell orders
-- Have worker threads construct models in parralel
-- Make general worker threads instead of bespoke ones
-- Separate logs
+- Save opportunities
+- Track profit
+- Blueprint trading
+- Region local trading

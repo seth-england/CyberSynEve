@@ -1,6 +1,7 @@
 import CSECommon
 import CSEClientSettings
 import CSEUndercutResult
+import datetime
 
 class CSEMarketBalanceQueryResult:
   def __init__(self) -> None:
@@ -32,16 +33,19 @@ class CSEProfitableResultEntry:
 
 class ProfitableTrade:
   def __init__(self):
+    self.m_ID = ""
     self.m_ItemName = ""
     self.m_StartRegionName = ""
     self.m_EndRegionName = ""
     self.m_ItemID = 0
     self.m_StartRegionID = 0
     self.m_StartRegionHubID = 0
+    self.m_StartRegionHubName = ""
     self.m_StartBuy = False
     self.m_StartAveragePrice = 0.0
     self.m_EndRegionID = 0
     self.m_EndRegionHubID = 0
+    self.m_EndRegionHubName = ""
     self.m_ItemCount = 0
     self.m_Profit = 0.0
     self.m_RateOfProfit = 0.0
@@ -50,6 +54,8 @@ class ProfitableTrade:
     self.m_EndTotalPrice = 0.0
     self.m_ItemVolume = 0
     self.m_CharID = 0
+    self.m_CharName = ""
+    self.m_AcceptedTime = datetime.datetime.utcnow()
     self.m_Valid = False
   
   def SortByRateOfProfit(self):
@@ -128,3 +134,26 @@ class SafetyResponse:
   def __init__(self) -> None:
     self.m_JitaToDodixieSafe = True
     self.m_JitaToAmarrSafe = True
+
+class AcceptOpportunity:
+  def __init__(self):
+    self.m_UUID = ""
+    self.m_TradesValueType = ProfitableTrade
+    self.m_Trades = list[self.m_TradesValueType]()
+
+class AcceptedOpportunitiesRequest:
+  def __init__(self):
+    self.m_UUID = ""
+    self.m_CharIDs = list[int]()
+    
+class AcceptedOpportunitiesResponse:
+  def __init__(self):
+    self.m_UUID = ""
+    self.m_CharIDs = list[int]()
+    self.m_TradesValueType = ProfitableTrade
+    self.m_Trades = list[self.m_TradesValueType]()
+
+class ClearOpportunitiesRequest:
+  def __init__(self):
+    self.m_UUID = ""
+    self.m_IDs = list[int]()

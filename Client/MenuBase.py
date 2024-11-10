@@ -5,6 +5,7 @@ class MenuBase:
     self.m_NextMenu : MenuBase = None
     self.m_NeedsChars = False
     self.m_NeedsOpportunities = False
+    self.m_NeedsAcceptedOpportunities = False
     pass
 
   def Start(self, client : CSEClient.CSEClient):
@@ -22,3 +23,4 @@ class MenuBase:
   def ResetFlags(self):
     self.m_NeedsChars = False
     self.m_NeedsOpportunities = False
+    self.m_NeedsAcceptedOpportunities = False

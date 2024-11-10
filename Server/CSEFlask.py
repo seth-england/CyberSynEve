@@ -177,6 +177,41 @@ def MarketBalance():
       return "", CSECommon.NOT_FOUND_CODE
   return "", CSECommon.NOT_FOUND_CODE
 
+@app.route(CSECommon.SERVER_ACCEPT_OPP_ENDPOINT)
+def AcceptOpp():
+  with server.m_LockFlask:
+    dict = json.loads(request.json)
+    http_request = CSEHTTP.AcceptOpportunity()
+    CSECommon.FromJson(http_request, dict)
+    success = server.m_CharacterModel.HandleAcceptedOpps(http_request, server.m_DBConn)
+    if success:
+      return "", CSECommon.OK_CODE
+    else:
+      return "", CSECommon.NOT_FOUND_CODE
+    
+@app.route(CSECommon.SERVER_ACCEPTED_OPP_ENDPOINT)
+def AcceptedOpp():
+  with server.m_LockFlask:
+    dict = json.loads(request.json)
+    http_request = CSEHTTP.AcceptedOpportunitiesRequest()
+    CSECommon.FromJson(http_request, dict)
+    trades = server.m_CharacterModel.GetAcceptedOpps(server.m_DBConn, http_request.m_CharIDs, CSECommon.OPPORTUNITY_STANDARD_EXPIRE)
+    response = CSEHTTP.AcceptedOpportunitiesResponse()
+    response.m_UUID = http_request.m_UUID
+    response.m_CharIDs = http_request.m_CharIDs
+    response.m_Trades = trades
+    return CSECommon.ObjectToJsonString(response), CSECommon.OK_CODE
+  
+@app.route(CSECommon.SERVER_CLEAR_OPPS_ENDPOINT)
+def ClearOpps():
+  with server.m_LockFlask:
+    dict = json.loads(request.json)
+    http_request = CSEHTTP.ClearOpportunitiesRequest()
+    CSECommon.FromJson(http_request, dict)
+    server.m_CharacterModel.ClearAcceptedOpps(server.m_DBConn, http_request.m_IDs)
+    server.m_DBConn.commit()
+    return "", CSECommon.OK_CODE
+
 def Start(mode):
   server.m_Thread = threading.Thread(target=CSEServer.Main, args=(server, mode))
   server.m_Thread.start()

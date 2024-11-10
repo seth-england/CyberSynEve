@@ -91,7 +91,7 @@ def InstanceValues(entity_instance) -> list[EntityAttribute]:
   
   return res
 
-def InstanceValueSet(values: list[EntityAttribute]):
+def InstanceValueTuple(values: list[EntityAttribute]):
   value_list = []
   for value in values:
     value_list.append(value.m_ActualValue)
@@ -119,18 +119,32 @@ def InstanceValuesPlaceholderString(values : list[EntityAttribute], names : bool
       res += ", "
   return res
 
+def InsertInstancesIntoTable(cursor : Cursor, table_name : str, entity_instances):
+  if entity_instances is None or len(entity_instances) == 0:
+    return
+  entity_attributes = InstanceValues(entity_instances[0])
+  attributes_string = EntityAttributeNamesString(entity_attributes)
+  instances_placeholder_string = InstanceValuesPlaceholderString(entity_attributes)
+  sql_string = f'REPLACE INTO {table_name} ({attributes_string}) VALUES({instances_placeholder_string})'
+  values = list()
+  for instance in entity_instances:
+    entity_attributes = InstanceValues(instance)
+    instance_values_tuple = InstanceValueTuple(entity_attributes)
+    values.append(instance_values_tuple)
+  cursor.executemany(sql_string, values)
+
 def InsertInstanceIntoTable(cursor : Cursor, table_name : str, entity_instance):
   entity_attributes = InstanceValues(entity_instance)
   attributes_string = EntityAttributeNamesString(entity_attributes)
   placeholder_string = InstanceValuesPlaceholderString(entity_attributes)
-  instance_values_set = InstanceValueSet(entity_attributes)
+  instance_values_set = InstanceValueTuple(entity_attributes)
   sql_string = f'INSERT INTO {table_name} ({attributes_string}) VALUES({placeholder_string})'
   cursor.execute(sql_string, instance_values_set)
 
 def UpdateInstanceInTable(cursor : Cursor, table_name : str, entity_instance):
   entity_attributes = InstanceValues(entity_instance)
   placeholder_string = InstanceValuesPlaceholderString(entity_attributes, True)
-  instance_values_set = InstanceValueSet(entity_attributes)
+  instance_values_set = InstanceValueTuple(entity_attributes)
   values_set = (instance_values_set) + (entity_instance.m_ID,)
   sql_string = f'UPDATE {table_name} SET {placeholder_string} WHERE m_ID = %s'
   cursor.execute(sql_string, values_set)

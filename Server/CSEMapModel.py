@@ -232,6 +232,12 @@ class MapModel:
     if region:
       return region.m_Name
     return ""
+  
+  def GetStationName(self, station_id : int) -> str:
+    station = self.m_StationIdToStation.get(station_id)
+    if station:
+      return station.m_Name
+    return ""
 
   def CreateFromScrape(self, scrape : CSEScrapeHelper.ScrapeFileFormat):
     # Gather the regions

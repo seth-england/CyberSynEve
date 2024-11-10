@@ -5,6 +5,8 @@ import CSEHTTP
 import json
 import CSEClientSettings
 import CSEUndercutResult
+import MySQLHelpers
+import datetime
 
 class CSECharacterTransaction:
   def __init__(self) -> None:
@@ -98,6 +100,31 @@ class Model:
       char_data.m_CharacterSystemId = message.m_SystemId
       char_data.m_ShipID = message.m_ShipId
       char_data.m_Transactions = message.m_CharacterTransactions
+  
+  def HandleAcceptedOpps(self,  request : CSEHTTP.AcceptOpportunity, conn : MySQLHelpers.Connection) -> bool:
+    MySQLHelpers.CreateTable(conn.cursor(), CSECommon.TABLE_ACCEPTED_OPPS, CSEHTTP.ProfitableTrade)
+    MySQLHelpers.InsertInstancesIntoTable(conn.cursor(), CSECommon.TABLE_ACCEPTED_OPPS, request.m_Trades)
+    conn.commit()
+    return True
+  
+  def GetAcceptedOpps(self, conn : MySQLHelpers.Connection, char_ids : list[int], time_delta : datetime.timedelta) -> list[CSEHTTP.ProfitableTrade]:
+    now = datetime.datetime.utcnow()
+    cutoff = now - time_delta
+    char_ids_format_string = ','.join(['%s'] * len(char_ids))
+    statement = f'SELECT * FROM {CSECommon.TABLE_ACCEPTED_OPPS} WHERE m_CharID IN (%s)' % char_ids_format_string + f'AND m_AcceptedTime > %s'
+    all_args_tuple = tuple(char_ids) + (cutoff,)
+    cursor = conn.cursor()
+    cursor.execute(statement, all_args_tuple)
+    all_ops : list[CSEHTTP.ProfitableTrade] = MySQLHelpers.ConstructInstancesFromCursor(cursor, CSEHTTP.ProfitableTrade)
+    return all_ops
+  
+  def ClearAcceptedOpps(self, conn : MySQLHelpers.Connection, ids : list[str]) -> list[CSEHTTP.ProfitableTrade]:
+    now = datetime.datetime.utcnow()
+    ids_format_string = ','.join(['%s'] * len(ids))
+    statement = f'DELETE FROM {CSECommon.TABLE_ACCEPTED_OPPS} WHERE m_ID IN (%s)' % ids_format_string
+    all_args_tuple = tuple(ids)
+    cursor = conn.cursor()
+    cursor.execute(statement, all_args_tuple)
 
   def HandleNewCharAuth(self, message: CSEMessages.CSEMessageNewCharAuth):
     char_data = self.m_CharacterIdToCharData.get(message.m_CharacterId)

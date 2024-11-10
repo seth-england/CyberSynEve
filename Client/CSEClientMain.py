@@ -13,6 +13,7 @@ import CSEClientSettings
 import CSEFileSystem
 import CSEClient
 import MenuMain
+import MenuBase
 
 client = CSEClient.CSEClient()
 
@@ -42,12 +43,15 @@ client.m_PingThread.start()
 menu = MenuMain.MenuMain()
 menu.Start(client)
 
-def StartMenu(next_menu):   
+def StartMenu(next_menu : MenuBase.MenuBase):   
   if next_menu:
     if next_menu.m_NeedsChars:
       client.RetrieveCharacters()
     if next_menu.m_NeedsOpportunities:
       client.RetrieveOpportunities()
+    if next_menu.m_NeedsAcceptedOpportunities:
+      char_ids = [char.m_CharacterId for char in client.m_Characters]
+      client.RetrieveAcceptedOpportunities(char_ids)
     next_menu.Start(client)
     
 # Main Loop

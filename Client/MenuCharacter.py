@@ -6,6 +6,7 @@ import CSECommon
 import webbrowser
 import MenuMain
 import MenuFindOpportunities
+import MenuViewAcceptedOpportunities
 
 class MenuCharacter(MenuBase.MenuBase):
   def __init__(self, char : CSEClient.CSEClientCharacter):
@@ -18,6 +19,7 @@ class MenuCharacter(MenuBase.MenuBase):
       print("1) Login Character")
     else:
       print("1) Find Opportunities")
+      print("2) Show Accepted Opportunities")
 
   def Update(self, user_input : str):
     if not self.m_Character.m_LoggedIn:
@@ -32,6 +34,9 @@ class MenuCharacter(MenuBase.MenuBase):
     else:
       if user_input.find('1') > -1:
         self.m_NextMenu = MenuFindOpportunities.MenuFindOpportunities(self.m_Character)
+      elif user_input.find('2') > -1:
+        self.m_NextMenu = MenuViewAcceptedOpportunities.MenuViewAcceptedOpportunities(self.m_Character)
+        self.m_NextMenu.m_NeedsAcceptedOpportunities = True
       else:
         self.m_NextMenu = MenuMain.MenuMain()     
       
