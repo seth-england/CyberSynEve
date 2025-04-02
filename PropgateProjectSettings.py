@@ -1,12 +1,15 @@
-import ProjectSettings
 import os
 import sys
 
-root_file = open(ProjectSettings.ROOT_SETTINGS, 'r')
+ROOT_FOLDER = os.path.dirname(os.path.abspath(__file__))
+ROOT_SETTINGS_TEMPLATE = f'{ROOT_FOLDER}\\ProjectSettingsTemplate.py'
+
+root_file = open(ROOT_SETTINGS_TEMPLATE, 'r')
 root_settings_string = root_file.read()
-for directory in os.listdir(ProjectSettings.ROOT_FOLDER) :
+root_settings_string = root_settings_string.replace("ROOT_FOLDER", f'ROOT_FOLDER=\"{ROOT_FOLDER.replace("\\","/")}\"', 1)
+for directory in os.listdir(ROOT_FOLDER) :
   if os.path.isdir(directory) :
-    file_path = ProjectSettings.ROOT_FOLDER + '/' + directory + '/' + 'ProjectSettings.py'
+    file_path = ROOT_FOLDER + '/' + directory + '/' + 'ProjectSettings.py'
     if os.path.exists(file_path):
       os.remove(file_path)
     new_file = open(file_path, 'w')

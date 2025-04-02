@@ -1,5 +1,4 @@
 import ProjectSettings
-ProjectSettings.Init()
 import CSECommon
 import requests
 import webbrowser
