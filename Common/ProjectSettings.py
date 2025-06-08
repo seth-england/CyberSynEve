@@ -1,7 +1,7 @@
 import sys
 import os
 
-ROOT_FOLDER="X:/CSE/Source/CyberSynEve/CyberSynEve"
+ROOT_FOLDER="C:/Projects/CyberSynEve"
 
 def Init():
   for directory in os.listdir(ROOT_FOLDER) :
