@@ -30,6 +30,15 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "subProcess": true
+        },
+        {
+          "name": "Debug React App",
+          "type": "chrome",
+          "request": "launch",
+          "url": "http://localhost:5173/",
+          "sourceMaps": true,
+          "webRoot": "${workspaceFolder}/cse_react_app/src",
+          "runtimeExecutable": "C:/Program Files/Google/Chrome/Application/chrome.exe",
         }
     ]
 }
