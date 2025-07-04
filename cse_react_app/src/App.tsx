@@ -1,13 +1,11 @@
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
 import './CSEAppCommon'
-import {motion} from 'motion/react'
 import React from 'react'
 import * as CSEAppCommon from './CSEAppCommon'
 import Welcome from './Welcome'
+import './CSEAppPanels'
 import { cse_app_default_context, CSEAppContext } from './CSEAppContext'
-import { CSEAppDefaultColorPalette } from './CSEAppColorPalette'
+import CSEAppPanels from './CSEAppPanels'
 
 class CSEReactApp
 {
@@ -18,7 +16,6 @@ class CSEReactApp
   m_ClientSettings : any = null
 }
 var cse_app_context = new CSEAppContext()
-cse_app_context.m_ColorPalette = CSEAppDefaultColorPalette
 
 async function PingServer()
 {
@@ -77,7 +74,7 @@ function App()
 
   return (
     <cse_app_default_context.Provider value={cse_app_context}>
-      <Welcome />
+      <CSEAppPanels />
     </cse_app_default_context.Provider>
   )
 }
