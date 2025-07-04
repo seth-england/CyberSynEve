@@ -4,47 +4,81 @@ import './App.css'
 import './CSEAppCommon'
 import {motion} from 'motion/react'
 import React from 'react'
-import { CSEAppStates } from './CSEAppCommon'
+import * as CSEAppCommon from './CSEAppCommon'
+import Welcome from './Welcome'
+import { cse_app_default_context, CSEAppContext } from './CSEAppContext'
+import { CSEAppDefaultColorPalette } from './CSEAppColorPalette'
 
-let [app_state, SetAppSate] = React.useState(CSEAppStates.STATE_INITIAL_CONNECT)
+class CSEReactApp
+{
+  m_State : any = null
+  m_SetState : any = null
+  m_ConnectedToServer : any = null
+  m_SetConnectedToServer : any = null
+  m_ClientSettings : any = null
+}
+var cse_app_context = new CSEAppContext()
+cse_app_context.m_ColorPalette = CSEAppDefaultColorPalette
+
 async function PingServer()
 {
   try
   {
-    
+    let json = 
+    {
+      m_UUID : "",
+      
+    }
+    await fetch(CSEAppCommon.CSE_PING_URL)
   }
   catch (err)
   {
-
   }
 }
 
 function App() 
 {
   const [count, setCount] = React.useState(0)
+  let [app_state, SetAppState] = React.useState(CSEAppCommon.CSE_STATE_INIT)
+  let [connected_to_server, SetConnectedToServer] = React.useState(false)
+  let [uuid, SetUUID] = React.useState("")
+  async function MainLoop()
+  {
+    if (app_state == CSEAppCommon.CSE_STATE_INIT)
+    {
+      // Try to open the client file, create one if we fail
+      const client_file = await fetch('./client.cse')
+      let client = null
+      let client_file_success = false
+      if (client_file.ok)
+      {
+        client = await client_file.json()
+        if (client)
+        {
+          uuid = client.m_UUID
+          client_file_success = true
+        }
+      }
+      if (!client_file_success)
+      {
+        const generated_uuid = crypto.randomUUID();
+        SetUUID(generated_uuid)
+        const client_json =
+        {
+          m_UUID : generated_uuid,
+        }
+        
+      }
+    }
+
+    
+  }
+  React.useEffect(() => {MainLoop()}, [] )
+
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <cse_app_default_context.Provider value={cse_app_context}>
+      <Welcome />
+    </cse_app_default_context.Provider>
   )
 }
 
