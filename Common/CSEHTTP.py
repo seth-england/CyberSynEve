@@ -126,13 +126,17 @@ class CharactersRequest:
   def __init__(self) -> None:
     self.m_UUID = ""
 
+class CharacterHTTP:
+  def __init__(self):
+    self.m_CharacterID: int | None = None
+    self.m_CharacterName = ""
+    self.m_CharacterType = ""
+    self.m_CharacterLoggedIn = False
+
 class CharactersResponse:
   def __init__(self) -> None:
-    self.m_UUID = ""
-    self.m_CharacterIds = list[int]()
-    self.m_CharaterNames = list[str]()
-    self.m_CharacterTypes = list[str]()
-    self.m_CharacterLoggedIn = list[bool]()
+    self.m_CharactersValueType = CharactersResponse
+    self.m_Characters = list[self.m_CharactersValueType]()
 
 class SafetyResponse:
   def __init__(self) -> None:

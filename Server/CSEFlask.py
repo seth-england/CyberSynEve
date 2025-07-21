@@ -45,20 +45,25 @@ def Safety():
 
 @app.route(CSECommon.SERVER_CHARACTERS_ENDPOINT)
 def Characters():
-    dict = json.loads(request.json)
-    http_request = CSEHTTP.CharactersRequest()
-    CSECommon.FromJson(http_request, dict)
-    char_ids = server.m_ClientModel.GetCharacterIds(http_request.m_UUID)
-    res = CSEHTTP.CharactersResponse()
-    if len(char_ids) > 0:
-      for char_id in char_ids:
-        char_data = server.m_CharacterModel.GetCharDataById(char_id)
-        if char_data:
-          res.m_CharacterIds.append(char_data.m_CharacterId)
-          res.m_CharaterNames.append(char_data.m_CharacterName)
-          res.m_CharacterTypes.append(char_data.m_Type)
-          res.m_CharacterLoggedIn.append(char_data.m_LoggedIn)
-    return CSECommon.ObjectToJsonString(res), CSECommon.OK_CODE
+  session_uuid = request.values.get('m_SessionUUID')
+  client_id = request.values.get("m_ClientID")
+  if type(session_uuid) != str or type(client_id) != str:
+    return "", CSECommon.BAD_PARAMS_CODE
+  client_id = int(client_id)
+
+  char_ids = server.m_ClientModel.GetCharacterIds(client_id)
+  res = CSEHTTP.CharactersResponse()
+  if len(char_ids) > 0:
+    for char_id in char_ids:
+      char_data = server.m_CharacterModel.GetCharDataById(char_id)
+      if char_data:
+        char_http = CSEHTTP.CharacterHTTP()
+        char_http.m_CharacterID = char_data.m_CharacterId
+        char_http.m_CharacterName = char_data.m_CharacterName
+        char_http.m_CharacterType = char_data.m_Type
+        char_http.m_CharacterLoggedIn = char_data.m_LoggedIn
+        res.m_Characters.append(char_http)
+  return CSECommon.ObjectToJsonString(res), CSECommon.OK_CODE
       
 
 @app.route(CSECommon.SERVER_AUTH_ENDPOINT)
@@ -132,17 +137,6 @@ def Ping():
     res.m_SessionUUID = existing_connection.m_SessionUUID
     res.m_ClientId = existing_connection.m_ClientID
     res_string = CSECommon.ObjectToJsonString(res)
-    #client = server.m_ClientModel.GetClientByUUID(http_request.m_UUID)
-    #if client:
-    #  ping_message = CSEMessages.CSEMessageClientPing()
-    #  ping_message.m_UUID = http_request.m_UUID
-    #  server.m_MsgSystem.QueueModelUpdateMessage(ping_message)
-    #  server.ScheduleClientUpdate(http_request.m_UUID)
-    #else:
-    #  new_client_message = CSEMessages.CSEMessageNewClient()
-    #  new_client_message.m_UUID = http_request.m_UUID
-    #  server.m_MsgSystem.QueueModelUpdateMessage(new_client_message)
-    #  server.ScheduleClientUpdate(http_request.m_UUID)
     return res_string, CSECommon.OK_CODE
   
 @app.route(CSECommon.SERVER_PROFITABLE_ENDPOINT)

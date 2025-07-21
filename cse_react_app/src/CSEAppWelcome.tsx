@@ -49,7 +49,7 @@ function Welcome()
     if (!client_id)
     {
       return
-    }
+    } 
     
     set_app_state(CSEAppCommon.CSE_STATE_MAIN)
   }
@@ -71,7 +71,7 @@ function Welcome()
   let loading_bounce = 
   (
     <div>
-      <p className="text-lg md:text-xl text-primary_text mb-6">*
+      <p className="text-lg md:text-xl text-primary_text mb-6">
         {has_error ? "Trying again..." : "Loading..."}
       </p>
       <div className="flex justify-center space-x-2">
