@@ -29,13 +29,13 @@ class CSEMessageNewCharAuth(CSEMessageBase):
     self.m_AccessToken = ""
     self.m_RefreshToken = ""
     self.m_ExpiresDateString = ""
-    self.m_UUID = ""
-    self.m_Type = ""
+    self.m_ClientId = ""
+    self.m_Type = None
 
 class CSEMessageNewClient(CSEMessageBase):
   def __init__(self):
     super().__init__()
-    self.m_UUID = ""
+    self.m_ClientId = ""
     self.m_Settings = CSEClientSettings.Settings()
 
 class CSEMessageClientPing(CSEMessageBase):
@@ -70,7 +70,7 @@ class NewRouteFound(CSEMessageBase):
 class SetClientSettings(CSEMessageBase):
   def __init__(self):
     super().__init__()
-    self.m_UUID = ""
+    self.m_ClientID = ""
     self.m_Settings = CSEClientSettings.Settings()
 
 class UpdateCharacterOrders(CSEMessageBase):

@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/*
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+*/
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -13,15 +22,54 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  --primary_bg: #020617;       /*slate-950*/
+  --secondary_bg: #082f49;     /*slate-800*/
+  --primary_accent: #06b6d4;   /*cyan-500*/
+  --secondary_accent: #15803d; /*green-700*/
+  --tertiary_accent: #ca8a04;  /*yellow-600*/
+  --warning: #991b1b;          /*red-800*/
+  --primary_text: #f1f5f9;     /*slate-100*/
+  --secondary_text: #93c5fd;   /*blue-300*/
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+@theme {
+  --color-primary_bg: var(--primary_bg);
+  --color-secondary_bg: var(--secondary_bg);
+  --color-primary_accent: var(--primary_accent);
+  --color-secondary_accent: var(--secondary_accent);
+  --color-tertiary_accent: var(--tertiary_accent);
+  --color-warning: var(--warning);
+  --color-primary_text: var(--primary_text);
+  --color-secondary_text: var(--secondary_text);
 }
-a:hover {
-  color: #535bf2;
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
 }
 
 body {
@@ -38,25 +86,26 @@ h1 {
 }
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
+  border-radius: 4px;
+  border: 4px solid transparent;
   padding: 0.6em 1.2em;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--primary_accent);
+  color: var(--primary_text);
   cursor: pointer;
   transition: border-color 0.25s;
 }
 button:hover {
-  border-color: #646cff;
+  border-color: var(--secondary_accent);
 }
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
-@media (prefers-color-scheme: light) {
+/*@media (prefers-color-scheme: light) {
   :root {
     color: #213547;
     background-color: #ffffff;
@@ -67,4 +116,4 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
-}
+}*/

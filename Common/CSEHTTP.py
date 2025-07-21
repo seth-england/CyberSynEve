@@ -82,7 +82,11 @@ class CheckLoginRequestResponse:
 class PingRequest:
   def __init__(self):
     self.m_UUID = ""
-    self.m_Settings = CSEClientSettings.Settings()
+
+class PingResponse():
+  def __init__(self):
+    self.m_SessionUUID = None,
+    self.m_ClientId = None,
 
 class GetProfitableRoute:
   def __init__(self):

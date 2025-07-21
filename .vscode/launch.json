@@ -10,7 +10,7 @@
             "request": "launch",
             "module": "flask",
             "env": {
-                "FLASK_APP": "./Server/CSEFlask.py:Start(\"cse_mode_query\")",
+                "FLASK_APP": "./Server/CSEFlask.py:Start(\"cse_mode_default\")",
                 "FLASK_DEBUG": "1"
             },
             "args": [

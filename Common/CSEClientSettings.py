@@ -7,4 +7,6 @@ class ProfitableSettings:
 
 class Settings:
   def __init__(self) -> None:
-    self.m_ProfitableSettings = ProfitableSettings() 
+    self.m_ProfitableSettings = ProfitableSettings()
+    self.m_PanelsHorzSize = [33.33, 33.33, 33.34],
+    self.m_PanelsVertSize = [5, 90, 5], 

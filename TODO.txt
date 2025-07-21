@@ -1,4 +1,3 @@
-- Save opportunities
 - Track profit
 - Blueprint trading
 - Region local trading

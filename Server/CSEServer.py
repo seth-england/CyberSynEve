@@ -41,6 +41,7 @@ import Workers.CSESafetyChecker as CSESafetyChecker
 import Workers.CSEServerOrderProcessor
 import datetime
 import CSEHTTP
+import CSEServerClientConnection
 from multiprocessing.managers import BaseManager
 from base64 import b64encode
 from telnetlib import NOP
@@ -79,9 +80,10 @@ class CSEServer:
     self.m_ServerRequestCoordinator : CSEServerRequestCoordinator.Coordinator = None
     self.m_Mode = CSECommon.MODE_DEFAULT
     self.m_DBConn = MySQLHelpers.Connect()
+    self.m_ServerClientConnections = dict[str, CSEServerClientConnection.Connection]()
 
-  def ScheduleClientUpdate(self, uuid : str):
-      client_data = self.m_ClientModel.GetClientByUUID(uuid)
+  def ScheduleClientUpdate(self, uuid : int):
+      client_data = self.m_ClientModel.GetClientById(uuid)
       if client_data:
         args = (uuid,)
         self.m_WorkerClientUpdater.m_ArgsQueue.put_nowait(args)

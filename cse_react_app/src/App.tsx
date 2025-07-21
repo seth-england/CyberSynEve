@@ -2,80 +2,113 @@ import './App.css'
 import './CSEAppCommon'
 import React from 'react'
 import * as CSEAppCommon from './CSEAppCommon'
-import Welcome from './Welcome'
-import './CSEAppPanels'
-import { cse_app_default_context, CSEAppContext } from './CSEAppContext'
+import Welcome from './CSEAppWelcome'
+import {CSEAppContext} from './CSEAppContext'
 import CSEAppPanels from './CSEAppPanels'
-
-class CSEReactApp
-{
-  m_State : any = null
-  m_SetState : any = null
-  m_ConnectedToServer : any = null
-  m_SetConnectedToServer : any = null
-  m_ClientSettings : any = null
-}
-var cse_app_context = new CSEAppContext()
-
-async function PingServer()
-{
-  try
-  {
-    let json = 
-    {
-      m_UUID : "",
-      
-    }
-    await fetch(CSEAppCommon.CSE_PING_URL)
-  }
-  catch (err)
-  {
-  }
-}
+import { BuildURL } from './CSEAppBuildURL'
+import type { PingResponse } from './CSEAppHTTP'
+import CSEAppClientSettingsUpdater from './CSEAppClientSettingsUpdater'
 
 function App() 
 {
-  const [count, setCount] = React.useState(0)
-  let [app_state, SetAppState] = React.useState(CSEAppCommon.CSE_STATE_INIT)
-  let [connected_to_server, SetConnectedToServer] = React.useState(false)
-  let [uuid, SetUUID] = React.useState("")
-  async function MainLoop()
+  const session_uuid = CSEAppContext((state) => state.m_SessionUUID)
+  const set_ping_error_message = CSEAppContext((state) => state.m_SetPingErrorMessage)
+  const set_has_ping_error_message = CSEAppContext((state) => state.m_SetHasPingErrorMessage)
+  const set_connected_to_server = CSEAppContext((state) => state.m_SetConnectedToServer)
+  const app_state = CSEAppContext((state) => state.m_AppState)
+  const set_client_id = CSEAppContext((state) => state.m_SetClientId)
+  const request_ping = CSEAppContext((state) => state.m_RequestPing)
+  const set_request_ping = CSEAppContext((state) => state.m_SetRequestPing)
+
+  async function PingServer() 
   {
-    if (app_state == CSEAppCommon.CSE_STATE_INIT)
+    let url = BuildURL(CSEAppCommon.CSE_PING_URL, {m_SessionUUID: session_uuid})
+    try
     {
-      // Try to open the client file, create one if we fail
-      const client_file = await fetch('./client.cse')
-      let client = null
-      let client_file_success = false
-      if (client_file.ok)
+      const res = await fetch(url)
+      if (!res.ok)
       {
-        client = await client_file.json()
-        if (client)
-        {
-          uuid = client.m_UUID
-          client_file_success = true
-        }
+        throw Error(`HTTP error ${res.status}`)
       }
-      if (!client_file_success)
+      
+      set_has_ping_error_message(false)
+      set_connected_to_server(true)
+      try
       {
-        const generated_uuid = crypto.randomUUID();
-        SetUUID(generated_uuid)
-        const client_json =
+        let ping_res: PingResponse = await res.json()
+        if (ping_res)
         {
-          m_UUID : generated_uuid,
+          if (ping_res.m_ClientId)
+          {
+            set_client_id(ping_res.m_ClientId)
+          }
+        } 
+      }
+      catch(err)
+      {
+        console.log("PingResponse invalid")
+        if (err instanceof Error)
+        {
+          console.log(`${err.message}`)
         }
-        
       }
     }
-
-    
+    catch(err)
+    {
+      if (err instanceof Error)
+      {
+        set_ping_error_message(`HTTP Error ${err.message}`)
+        set_has_ping_error_message(true)
+        set_connected_to_server(false)
+        return
+      }
+    }
   }
-  React.useEffect(() => {MainLoop()}, [] )
+
+  async function SetupPing()
+  {
+    setInterval(PingServer, 1000)
+  }
+
+  async function PingFromRequest()
+  {
+    if (!request_ping)
+    {
+      return
+    }
+
+    try
+    {
+      PingServer()
+      set_request_ping(false)
+    }
+    catch(err)
+    {
+
+    }
+  }
+
+  React.useEffect(() => {SetupPing()}, [] )
+  React.useEffect(() => {PingFromRequest()}, [request_ping] )
+  
+  let content =
+  (
+    <></>
+  )
+  if (app_state === CSEAppCommon.CSE_STATE_WELCOME)
+  {
+    content = (<Welcome/>)
+  }
+  else if (app_state === CSEAppCommon.CSE_STATE_MAIN)
+  {
+    content = (<CSEAppPanels/>)
+  }
 
   return (
-    <cse_app_default_context.Provider value={cse_app_context}>
-      <CSEAppPanels />
-    </cse_app_default_context.Provider>
+    <>
+      <CSEAppClientSettingsUpdater/>
+      {content}
+    </>
   )
 }
 

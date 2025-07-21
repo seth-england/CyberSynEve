@@ -66,7 +66,7 @@ class CharacterData:
     self.m_CharacterSystemId = None
     self.m_CharacterRegionId = None
     self.m_ShipID = None
-    self.m_Type = CSECommon.CHAR_TYPE_INVALID
+    self.m_Type = CSECommon.CHAR_TYPE_TRADE_BOT
     self.m_LoggedIn = True
 
 class Model:
@@ -138,7 +138,8 @@ class Model:
       char_data.m_AccessToken = message.m_AccessToken
       char_data.m_RefreshToken = message.m_RefreshToken
       char_data.m_ExpiresDateString = message.m_ExpiresDateString
-      char_data.m_Type = message.m_Type
+      if message.m_Type:
+        char_data.m_Type = message.m_Type
       char_data.m_LoggedIn = True
 
   def HandleUpdateCharacterOrders(self, message : CSEMessages.UpdateCharacterOrders):

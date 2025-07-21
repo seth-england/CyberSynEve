@@ -95,7 +95,7 @@ def Main(worker : CSEServerWorker.Worker, uuid : str):
     worker.m_MsgSystem.QueueModelUpdateMessage(char_update_message)
 
     # Run profitable query
-    client = worker.m_AllModels.m_ClientModel.GetClientByUUID(client_update_message.m_UUID)
+    client = worker.m_AllModels.m_ClientModel.GetClientById(client_update_message.m_UUID)
     client_settings = CSEClientSettings.Settings()
     max_ship_volume = None
     ship_item = worker.m_AllModels.m_ItemModel.GetItemDataFromID(char_update_message.m_ShipId)

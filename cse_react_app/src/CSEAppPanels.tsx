@@ -1,12 +1,18 @@
 import './CSEAppCommon'
 import React from 'react'
+import { CSEAppContext } from './CSEAppContext'
+import { CreateCSEAppClientSettings } from './CSEAppClientSettings'
 
-function CSEAppPanels()
+export function CSEAppPanels()
 {
+  const client_settings = CSEAppContext((state) => state.m_ClientSettings)
+  const set_client_settings = CSEAppContext((state) => state.m_SetClientSettings)
   const [panel_sizes_vert, SetPanelSizesVert] = React.useState([5, 90, 5])
   const [panel_sizes_horz, SetPanelSizesHorz] = React.useState([33, 33, 34])
+  const panel_sizes_vert_ref = React.useRef(panel_sizes_vert)
+  const panel_sizes_horz_ref = React.useRef(panel_sizes_horz)
   const container_ref = React.useRef(null)
-  const is_dragging = React.useRef(false)
+  const [is_dragging, set_is_dragging] = React.useState(false)
   const drag_start = React.useRef(0)
   const drag_horz = React.useRef(false)
   const drag_index = React.useRef(0)
@@ -14,7 +20,7 @@ function CSEAppPanels()
 
   function HandleMouseMove(e: any)
   {
-    if (is_dragging.current === null || !container_ref.current || is_dragging.current === false || drag_start.current === null)
+    if (!container_ref.current || drag_start.current === null)
     {
       return
     }
@@ -68,25 +74,39 @@ function CSEAppPanels()
     }
 
     SetPanelSizesHorz(new_panel_sizes_horz)
+    panel_sizes_horz_ref.current = new_panel_sizes_horz
   }
 
   function HandleMouseUp()
   {
-    is_dragging.current = false
+    set_is_dragging(false)
     last_delta.current = 0
     document.removeEventListener('mousemove', HandleMouseMove);
     document.removeEventListener('mouseup', HandleMouseUp);
+    let new_client_settings = CreateCSEAppClientSettings(client_settings)
+    new_client_settings.m_PanelsVertSize = panel_sizes_vert_ref.current as typeof new_client_settings.m_PanelsVertSize
+    new_client_settings.m_PanelsHorzSize = panel_sizes_horz_ref.current as typeof new_client_settings.m_PanelsHorzSize
+    set_client_settings(new_client_settings)
   }
 
   function OnMouseDownHorz(e: any, index: number)
   {
-    is_dragging.current = true
+    set_is_dragging(true)
     drag_horz.current = true
     drag_start.current = e.clientX
     drag_index.current = index
     document.addEventListener('mousemove', HandleMouseMove);
-    document.addEventListener('mouseup', HandleMouseUp);
+    document.addEventListener('mouseup', HandleMouseUp)
   }
+
+  function HandleSettingsChanged()
+  {
+    SetPanelSizesHorz(client_settings.m_PanelsHorzSize)
+    SetPanelSizesVert(client_settings.m_PanelsVertSize)
+    panel_sizes_horz_ref.current = client_settings.m_PanelsHorzSize
+    panel_sizes_vert_ref.current = client_settings.m_PanelsVertSize
+  }
+  React.useEffect(() => {HandleSettingsChanged()}, [client_settings])
 
   return (
     <div className='w-screen h-screen bg-primary_bg'>
