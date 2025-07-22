@@ -11,6 +11,7 @@ function CSEAppCharacterList()
   const client_id = CSEAppContext((state) => state.m_ClientID)
   const connected_to_server = CSEAppContext((state) => state.m_ConnectedToServer)
   const [character_list, set_character_list] = React.useState(new Array<CSEAppHTTP.Character>())
+  const character_count = CSEAppContext((state) => state.m_CharacterCount)
 
   async function FetchCharacters() 
   {
@@ -43,7 +44,7 @@ function CSEAppCharacterList()
 
   }
 
-  React.useEffect(() => {FetchCharacters()}, [connected_to_server, session_uuid, client_id])
+  React.useEffect(() => {FetchCharacters()}, [connected_to_server, session_uuid, client_id, character_count])
 
   async function HandleLoginCharacter() 
   {

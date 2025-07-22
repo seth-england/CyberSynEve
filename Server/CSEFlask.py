@@ -64,7 +64,6 @@ def Characters():
         char_http.m_CharacterLoggedIn = char_data.m_LoggedIn
         res.m_Characters.append(char_http)
   return CSECommon.ObjectToJsonString(res), CSECommon.OK_CODE
-      
 
 @app.route(CSECommon.SERVER_AUTH_ENDPOINT)
 def Auth():
@@ -136,6 +135,12 @@ def Ping():
     res = CSEHTTP.PingResponse()
     res.m_SessionUUID = existing_connection.m_SessionUUID
     res.m_ClientId = existing_connection.m_ClientID
+
+    # Check if we have characters logged in
+    character_ids = server.m_ClientModel.GetCharacterIds(res.m_ClientId)
+    if character_ids:
+      res.m_CharacterCount = len(character_ids)
+
     res_string = CSECommon.ObjectToJsonString(res)
     return res_string, CSECommon.OK_CODE
   
