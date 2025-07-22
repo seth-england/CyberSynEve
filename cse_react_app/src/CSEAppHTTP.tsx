@@ -19,3 +19,11 @@ export interface CharactersResponse
 {
   m_Characters: Array<Character>
 }
+
+export interface PortraitResponse
+{
+  m_SessionUUID: string
+  m_ClientID: number
+  m_CharacterID: number
+  m_Portrait: string
+}

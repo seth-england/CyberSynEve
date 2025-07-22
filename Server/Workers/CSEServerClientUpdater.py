@@ -38,6 +38,16 @@ def Main(worker : CSEServerWorker.Worker, uuid : str):
       logged_out_message.m_CharacterId = character_id
       worker.m_MsgSystem.QueueModelUpdateMessage(logged_out_message)
       continue
+
+    # Get the character's portrait
+    if char_data.m_Portrait is None:
+      location_url = f'{CSECommon.EVE_CHARACTERS}+{char_data.m_CharacterId}/portrait'
+      query = {'character_id': character_id, 'token' : char_update_message.m_AccessToken}
+      res = CSECommon.DecodeJsonFromURL(location_url, params=query)
+      if res:
+        image_string = res.get('px128x128')
+        char_update_message.m_Portrait = image_string
+
     # Update the location of the character
     location_url = f'{CSECommon.EVE_SERVER_ROOT}characters/{character_id}/location/'
     query = {'character_id': character_id, 'token' : char_update_message.m_AccessToken}

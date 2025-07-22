@@ -14,7 +14,8 @@ export const SERVER_CLIENT_SETTINGS_ENDPOINT = '/clientsettings'
 export const SERVER_CLIENT_SETTINGS_URL = CSE_SERVER_URL + SERVER_CLIENT_SETTINGS_ENDPOINT
 export const SERVER_CHARACTERS_ENDPOINT = '/characters'
 export const SERVER_CHARACTERS_URL = CSE_SERVER_URL + SERVER_CHARACTERS_ENDPOINT
-
+export const SERVER_PORTRAIT_ENDPOINT = '/portrait'
+export const SERVER_PORTRAIT_URL = CSE_SERVER_URL + SERVER_PORTRAIT_ENDPOINT
 
 // Other
 export const SCOPES = 'publicData esi-location.read_location.v1 esi-location.read_ship_type.v1 esi-wallet.read_character_wallet.v1 esi-markets.read_character_orders.v1'

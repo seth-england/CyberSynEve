@@ -90,6 +90,13 @@ class PingResponse():
     self.m_CharacterCount = 0
     self.m_LoggedInCharacterCount = 0
 
+class PortraitResponse():
+  def __init__(self):
+    self.m_SessionUUID = None
+    self.m_ClientID = None
+    self.m_CharacterID = None
+    self.m_Portrait = None
+
 class GetProfitableRoute:
   def __init__(self):
     self.m_UUID = ""

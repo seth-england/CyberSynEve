@@ -28,6 +28,7 @@ class UpdateCharacterMessage(CSEMessages.CSEMessageBase):
     self.m_RegionId = 0
     self.m_ShipId = 0
     self.m_CharacterTransactions = list[CSECharacterTransaction]()
+    self.m_Portrait: str | None = None
 
 class CSECharacterTransaction:
   def __init__(self) -> None:
@@ -68,6 +69,7 @@ class CharacterData:
     self.m_ShipID = None
     self.m_Type = CSECommon.CHAR_TYPE_TRADE_BOT
     self.m_LoggedIn = True
+    self.m_Portrait : None | str = None 
 
 class Model:
   def __init__(self) -> None:
@@ -100,7 +102,9 @@ class Model:
       char_data.m_CharacterSystemId = message.m_SystemId
       char_data.m_ShipID = message.m_ShipId
       char_data.m_Transactions = message.m_CharacterTransactions
-  
+      if message.m_Portrait:
+        char_data.m_Portrait = message.m_Portrait  
+
   def HandleAcceptedOpps(self,  request : CSEHTTP.AcceptOpportunity, conn : MySQLHelpers.Connection) -> bool:
     MySQLHelpers.CreateTable(conn.cursor(), CSECommon.TABLE_ACCEPTED_OPPS, CSEHTTP.ProfitableTrade)
     MySQLHelpers.InsertInstancesIntoTable(conn.cursor(), CSECommon.TABLE_ACCEPTED_OPPS, request.m_Trades)

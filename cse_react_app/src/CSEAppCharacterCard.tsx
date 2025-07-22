@@ -2,6 +2,7 @@ import * as CSEAppCommon from './CSEAppCommon'
 import React from 'react'
 import { BuildURL } from './CSEAppBuildURL'
 import { CSEAppContext } from './CSEAppContext'
+import type { PortraitResponse } from './CSEAppHTTP'
 
 const STATE_INIT = 0
 const STATE_LOG_IN = 1
@@ -12,21 +13,48 @@ function CSEAppCharacterCard({character_name, character_id, _logged_in, type}: a
   const [state, set_state] = React.useState(STATE_INIT)
   let logged_in = React.useRef(_logged_in)
   const session_uuid = CSEAppContext((state) => state.m_SessionUUID)
+  const [loop_counter, set_loop_counter] = React.useState(0)
+  const internal_counter = React.useRef(0)
+  const [portrait_string, set_portrait_string] = React.useState<string | null>(null)
+  const client_id =  CSEAppContext((state) => state.m_ClientID)
 
-  async function Init()
+  function Init()
   {
-    if (state != STATE_INIT)
+    function CounterFunc()
     {
-      return
+      internal_counter.current += 1
+      set_loop_counter(internal_counter.current)
     }
+    const interval_id = setInterval(CounterFunc, 1000)
+    return () => {clearInterval(interval_id)}
+  }
 
-    if (logged_in.current)
+  async function MainLoop()
+  {
+    if (!portrait_string)
     {
-      set_state(STATE_LOGGED_IN)
-    }
-    else
-    {
-      set_state(STATE_LOG_IN)
+      let url = BuildURL(CSEAppCommon.SERVER_PORTRAIT_URL, {m_SessionUUID: session_uuid, m_ClientID: client_id, m_CharacterID: character_id})
+      try
+      {
+        const res = await fetch(url)
+        if (!res.ok)
+        {
+          throw Error(`HTTP error ${res.status}`)
+        }
+
+        const portrait_res: PortraitResponse = await res.json()
+        if (portrait_res)
+        {
+          set_portrait_string(portrait_res.m_Portrait)
+        }
+      }
+      catch(err)
+      {
+        if (err instanceof Error)
+        {
+          console.log(`${err.message}`)
+        }
+      }
     }
   }
 
@@ -37,13 +65,21 @@ function CSEAppCharacterCard({character_name, character_id, _logged_in, type}: a
   }
 
   React.useEffect(() => {Init()}, [])
+  React.useEffect(() => {MainLoop()}, [loop_counter])
 
-  var avatar_jsx = (<div>Placeholder</div>)
+  var avatar_jsx = (<div>No Portrait</div>)
+  if (portrait_string)
+  {
+    avatar_jsx = 
+    (
+      <img src={portrait_string} className='w-32 h-32 m-2' alt="Image from memory" />
+    )
+  }
   
   var buttons_jsx = (<div>Buttons</div>)
-  if (state == STATE_LOGGED_IN)
+  if (logged_in)
   {
-    buttons_jsx = (<div>Logged In</div>)
+    buttons_jsx = (<div className='m-2'>Logged In</div>)
   }
   else
   {
@@ -52,9 +88,11 @@ function CSEAppCharacterCard({character_name, character_id, _logged_in, type}: a
     </button>)
   }
 
+  var name_jsx = (<div className='m-2'>{character_name}</div>)
+
   return (
     <div className='flex flex-col border-primary_accent w-full border-4'>
-      {character_name}
+      {name_jsx}
       {avatar_jsx}
       {buttons_jsx}
     </div>

@@ -123,7 +123,7 @@ def ScrapeRegionIds() :
 
   args = {'datasource' : 'tranquility'}
   res = requests.get(CSECommon.EVE_REGIONS, data=args)
-  if res.status_code == CSECommon.OK_CODE:
+  if res.status_code == CSECommon.CODE_OK:
     print("Region IDs retrieved from EVE")
   else:
     print("Region IDs could not be retrieved from EVE")
