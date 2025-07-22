@@ -140,6 +140,10 @@ def Ping():
     character_ids = server.m_ClientModel.GetCharacterIds(res.m_ClientId)
     if character_ids:
       res.m_CharacterCount = len(character_ids)
+      for char_id in character_ids:
+        char_data = server.m_CharacterModel.GetCharDataById(char_id)
+        if char_data and char_data.m_LoggedIn:
+          res.m_LoggedInCharacterCount += 1
 
     res_string = CSECommon.ObjectToJsonString(res)
     return res_string, CSECommon.OK_CODE

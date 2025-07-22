@@ -23,8 +23,6 @@ def Main(worker : CSEServerWorker.Worker, uuid : str):
     char_data = worker.m_AllModels.m_CharacterModel.GetCharDataById(character_id)
     if char_data is None:
       continue
-    if not char_data.m_LoggedIn:
-      continue
     char_update_message = CSECharacterModel.UpdateCharacterMessage()
     char_update_message.m_CharacterId = character_id
     # Validate the access token

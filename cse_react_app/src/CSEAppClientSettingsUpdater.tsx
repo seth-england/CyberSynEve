@@ -46,7 +46,7 @@ function CSEAppClientSettingsUpdater()
 
   async function GetSettings()
   {
-    if (!connected_to_server)
+    if (!connected_to_server || !client_id)
     {
       return
     }

@@ -116,7 +116,7 @@ export function CSEAppPanels()
       </div>
       <div className='h-1 bg-primary_accent'></div>
       <div className='flex w-screen' ref={container_ref} style={{height: `${panel_sizes_vert[1]}%`}}>
-        <div className='flex items-start justify-center text-primary_text overflow-scroll' style={{width: `${panel_sizes_horz[0]}%`}}>
+        <div className='overflow-scroll' style={{width: `${panel_sizes_horz[0]}%`}}>
           <CSEAppCharacterList />
         </div>
         <div className='w-1 bg-primary_accent cursor-ew-resize' onMouseDown={(e) => OnMouseDownHorz(e, 0)}></div>

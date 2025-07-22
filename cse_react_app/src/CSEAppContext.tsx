@@ -23,6 +23,8 @@ interface CSEAppContextType
     m_SetRequestPing: any,
     m_CharacterCount: number,
     m_SetCharacterCount: any,
+    m_LoggedInCharacterCount: number,
+    m_SetLoggedInCharacterCount: any,
 }
 
 function CreateOrGetSessionUUID(): string
@@ -69,4 +71,6 @@ export const CSEAppContext = create<CSEAppContextType>((set) =>
   m_SetRequestPing: (m_RequestPing: boolean) => set({m_RequestPing}),
   m_CharacterCount: 0,
   m_SetCharacterCount: (m_CharacterCount: number) => set({m_CharacterCount}),
-}));
+  m_LoggedInCharacterCount: 0,
+  m_SetLoggedInCharacterCount: (m_LoggedInCharacterCount: number) => set({m_LoggedInCharacterCount}),
+}))

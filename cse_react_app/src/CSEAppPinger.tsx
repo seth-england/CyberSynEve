@@ -14,7 +14,8 @@ function CSEAppPinger()
   const request_ping = CSEAppContext((state) => state.m_RequestPing)
   const set_request_ping = CSEAppContext((state) => state.m_SetRequestPing)
   const set_character_count = CSEAppContext((state) => state.m_SetCharacterCount)
-
+  const set_logged_in_character_count = CSEAppContext((state) => state.m_SetLoggedInCharacterCount)
+  
   async function PingServer() 
   {
     let url = BuildURL(CSEAppCommon.CSE_PING_URL, {m_SessionUUID: session_uuid})
@@ -37,6 +38,7 @@ function CSEAppPinger()
           {
             set_client_id(ping_res.m_ClientId)
             set_character_count(ping_res.m_CharacterCount)
+            set_logged_in_character_count(ping_res.m_LoggedInCharacterCount)
           }
         } 
       }

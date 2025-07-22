@@ -85,9 +85,10 @@ class PingRequest:
 
 class PingResponse():
   def __init__(self):
-    self.m_SessionUUID = None,
-    self.m_ClientId = None,
+    self.m_SessionUUID = None
+    self.m_ClientId = None
     self.m_CharacterCount = 0
+    self.m_LoggedInCharacterCount = 0
 
 class GetProfitableRoute:
   def __init__(self):

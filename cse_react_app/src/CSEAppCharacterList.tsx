@@ -12,6 +12,7 @@ function CSEAppCharacterList()
   const connected_to_server = CSEAppContext((state) => state.m_ConnectedToServer)
   const [character_list, set_character_list] = React.useState(new Array<CSEAppHTTP.Character>())
   const character_count = CSEAppContext((state) => state.m_CharacterCount)
+  const logged_in_character_count = CSEAppContext((state) => state.m_LoggedInCharacterCount)
 
   async function FetchCharacters() 
   {
@@ -44,7 +45,7 @@ function CSEAppCharacterList()
 
   }
 
-  React.useEffect(() => {FetchCharacters()}, [connected_to_server, session_uuid, client_id, character_count])
+  React.useEffect(() => {FetchCharacters()}, [connected_to_server, session_uuid, client_id, character_count, logged_in_character_count])
 
   async function HandleLoginCharacter() 
   {
@@ -52,17 +53,25 @@ function CSEAppCharacterList()
     window.open(url, '_blank', 'width=600,height=600,noopener,noreferrer')
   }
 
+  const char_to_jsx = (character : CSEAppHTTP.Character) =>
+  (
+    <CSEAppCharacterCard 
+     key={character.m_CharacterID} 
+     character_name={character.m_CharacterName} 
+     character_id={character.m_CharacterID}
+     _logged_in={character.m_CharacterLoggedIn}
+     type={character.m_CharacterType}
+    />    
+  )
+
+  const char_list_jsx = character_list.map(char_to_jsx)
+
   return (
-    <div className="flex flex-col mb-4 space-y-4 w-full h-full m-5">
-      <button className='flex self-center items-center justify-center w-full' onClick={HandleLoginCharacter}>
+    <div className="flex flex-col items-start mb-4 space-y-4 min-w-min max-w-md h-full m-5">
+      <button className='self-center' onClick={HandleLoginCharacter}>
         Log In Character
       </button>
-      {
-          character_list.map
-          (
-            (character) => (<CSEAppCharacterCard key={character.m_CharacterID} character_name={character.m_CharacterName} character_id={character.m_CharacterID} />)
-          )
-      }
+      {char_list_jsx}
     </div>
   )
 }
