@@ -18,7 +18,6 @@ class CSEClientData:
   def __init__(self) -> None:
     self.m_CharacterIds = list[int]()
     self.m_ClientId = "" # A unique identifier for a client running somewhere in the world
-    self.m_ProfitableQueryResult = None
     self.m_ProfitableResult = CSEHTTP.CSEProfitableResult()
     self.m_Settings = CSEClientSettings.Settings()
     self.m_UndercutResult = CSEUndercutResult.CSEUndercutResult()

@@ -3,6 +3,7 @@ import React from 'react'
 import { BuildURL } from './CSEAppBuildURL'
 import { CSEAppContext } from './CSEAppContext'
 import type { PortraitResponse } from './CSEAppHTTP'
+import opportunities_icon from './assets/coins.png'
 
 const STATE_INIT = 0
 const STATE_LOG_IN = 1
@@ -79,7 +80,14 @@ function CSEAppCharacterCard({character_name, character_id, _logged_in, type}: a
   var buttons_jsx = (<div>Buttons</div>)
   if (logged_in)
   {
-    buttons_jsx = (<div className='m-2'>Logged In</div>)
+    buttons_jsx = 
+    (
+      <div className='flex m-2'>
+        <button>
+          <img src={opportunities_icon} alt='Opportunities' className="w-4 h-4"></img>
+        </button>
+      </div>
+    )
   }
   else
   {
@@ -91,7 +99,7 @@ function CSEAppCharacterCard({character_name, character_id, _logged_in, type}: a
   var name_jsx = (<div className='m-2'>{character_name}</div>)
 
   return (
-    <div className='flex flex-col border-primary_accent w-full border-4'>
+    <div className='flex flex-col justify-start items-start border-primary_accent w-full border-4'>
       {name_jsx}
       {avatar_jsx}
       {buttons_jsx}

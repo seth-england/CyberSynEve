@@ -217,6 +217,10 @@ def Portrait():
 @app.route(CSECommon.SERVER_PROFITABLE_ENDPOINT)
 def Profitable():
   with server.m_LockFlask:
+    valid_result = ValidateConnection(request)
+    if valid_result.m_Client is None:
+      return "", CSECommon.CODE_BAD_PARAMS
+      
     dict = json.loads(request.json)
     http_request = CSEHTTP.GetProfitableRoute()
     CSECommon.FromJson(http_request, dict)
