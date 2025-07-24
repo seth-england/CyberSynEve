@@ -221,17 +221,12 @@ def Profitable():
     if valid_result.m_Client is None:
       return "", CSECommon.CODE_BAD_PARAMS
       
-    dict = json.loads(request.json)
-    http_request = CSEHTTP.GetProfitableRoute()
-    CSECommon.FromJson(http_request, dict)
-    client = server.m_ClientModel.GetClientById(http_request.m_UUID)
-    if client:
-      res = CSEHTTP.GetProfitableRouteResponse()
-      res.m_UUID = http_request.m_UUID
-      res.m_ProfitableResult = client.m_ProfitableResult
-      res_json = CSECommon.ObjectToJsonDict(res)
-      server.ScheduleClientUpdate(http_request.m_UUID)
-      return jsonify(res_json), CSECommon.CODE_OK
+    res = CSEHTTP.GetProfitableRouteResponse()
+    res.m_UUID = valid_result.m_ClientID
+    res.m_ProfitableResult = valid_result.m_Client.m_ProfitableResult
+    res_json = CSECommon.ObjectToJsonDict(res)
+    server.ScheduleClientUpdate(http_request.m_UUID)
+    return jsonify(res_json), CSECommon.CODE_OK
     return "", CSECommon.CODE_NOT_FOUND
 
 @app.route(CSECommon.SERVER_CLIENT_SETTINGS_ENDPOINT, methods= ['GET'])

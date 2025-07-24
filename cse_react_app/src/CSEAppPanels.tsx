@@ -1,8 +1,9 @@
-import './CSEAppCommon'
+import * as CSEAppCommon from './CSEAppCommon'
 import React from 'react'
 import { CSEAppContext } from './CSEAppContext'
 import { CreateCSEAppClientSettings } from './CSEAppClientSettings'
 import CSEAppCharacterList from "./CSEAppCharacterList"
+import CSEAppTabList from './CSEAppTabList'
 
 export function CSEAppPanels()
 {
@@ -18,6 +19,8 @@ export function CSEAppPanels()
   const drag_horz = React.useRef(false)
   const drag_index = React.useRef(0)
   const last_delta = React.useRef(0)
+  const primary_tab_list = CSEAppContext((state) => state.m_PrimaryTabList)
+  const secondary_tab_list = CSEAppContext((state) => state.m_SecondaryTabList)
 
   function HandleMouseMove(e: any)
   {
@@ -120,12 +123,12 @@ export function CSEAppPanels()
           <CSEAppCharacterList />
         </div>
         <div className='w-1 bg-primary_accent cursor-ew-resize' onMouseDown={(e) => OnMouseDownHorz(e, 0)}></div>
-        <h1 className='flex items-center justify-center text-primary_text' style={{width: `${panel_sizes_horz[1]}%`}}>
-          Column 2
+        <h1 className='' style={{width: `${panel_sizes_horz[1]}%`}}>
+          {secondary_tab_list}
         </h1>
         <div className='w-1 bg-primary_accent cursor-ew-resize' onMouseDown={(e) => OnMouseDownHorz(e, 1)}></div>
-        <h1 className='flex items-center justify-center text-primary_text' style={{width: `${panel_sizes_horz[2]}%`}}>
-          Column 3
+        <h1 className='' style={{width: `${panel_sizes_horz[2]}%`}}>
+          {primary_tab_list}
         </h1>
       </div>
       <div className='h-1 bg-primary_accent'></div>

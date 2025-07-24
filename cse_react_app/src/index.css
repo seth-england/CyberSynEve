@@ -31,6 +31,7 @@
   --warning: #991b1b;          /*red-800*/
   --primary_text: #f1f5f9;     /*slate-100*/
   --secondary_text: #93c5fd;   /*blue-300*/
+  --primary_border: #1e293b;   /*slate-700*/
 }
 
 @theme {

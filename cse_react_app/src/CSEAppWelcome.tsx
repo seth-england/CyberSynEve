@@ -1,5 +1,5 @@
 import * as CSEAppCommon from './CSEAppCommon'
-import React, { useMemo } from 'react'
+import React from 'react'
 import { CSEAppContext } from './CSEAppContext'
 import * as CSEAppHTTP from './CSEAppHTTP'
 import {BuildURL} from './CSEAppBuildURL'

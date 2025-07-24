@@ -20,3 +20,10 @@ export const SERVER_PORTRAIT_URL = CSE_SERVER_URL + SERVER_PORTRAIT_ENDPOINT
 // Other
 export const SCOPES = 'publicData esi-location.read_location.v1 esi-location.read_ship_type.v1 esi-wallet.read_character_wallet.v1 esi-markets.read_character_orders.v1'
 export const CLIENT_ID = 'ba636c6aeae54c8386770bc919ef2bca'
+
+// Tab list
+export const TAB_LIST_PRIMARY = "TAB_LIST_PRIMARY"
+export const TAB_LIST_SECONDARY = "TAB_LIST_SECONDARY"
+
+// Tab types
+export const TAB_TYPE_OPPORTUNITIES = "TAB_TYPE_OPPORTUNITIES"

@@ -4,6 +4,7 @@ import { BuildURL } from './CSEAppBuildURL'
 import { CSEAppContext } from './CSEAppContext'
 import type { PortraitResponse } from './CSEAppHTTP'
 import opportunities_icon from './assets/coins.png'
+import type { CSEAppTabRequest } from './CSEAppTabRequest'
 
 const STATE_INIT = 0
 const STATE_LOG_IN = 1
@@ -18,7 +19,9 @@ function CSEAppCharacterCard({character_name, character_id, _logged_in, type}: a
   const internal_counter = React.useRef(0)
   const [portrait_string, set_portrait_string] = React.useState<string | null>(null)
   const client_id =  CSEAppContext((state) => state.m_ClientID)
-
+  const tab_requests = CSEAppContext((state) => state.m_TabRequests)
+  const set_tab_requests = CSEAppContext((state) => state.m_SetTabRequests)
+  
   function Init()
   {
     function CounterFunc()
@@ -65,6 +68,12 @@ function CSEAppCharacterCard({character_name, character_id, _logged_in, type}: a
     window.open(url, '_blank', 'width=600,height=600,noopener,noreferrer')
   }
 
+  function HandleOpportunitiesClick()
+  {
+    const new_tab_request: CSEAppTabRequest = {m_Name: `${character_name} - Opportunities`, m_ID: crypto.randomUUID(), m_TargetListID: CSEAppCommon.TAB_LIST_PRIMARY, m_Type: CSEAppCommon.TAB_TYPE_OPPORTUNITIES, m_Prius: character_id}
+    set_tab_requests([...tab_requests, new_tab_request])
+  }
+
   React.useEffect(() => {Init()}, [])
   React.useEffect(() => {MainLoop()}, [loop_counter])
 
@@ -78,12 +87,12 @@ function CSEAppCharacterCard({character_name, character_id, _logged_in, type}: a
   }
   
   var buttons_jsx = (<div>Buttons</div>)
-  if (logged_in)
+  if (logged_in.current)
   {
     buttons_jsx = 
     (
       <div className='flex m-2'>
-        <button>
+        <button onClick={HandleOpportunitiesClick}>
           <img src={opportunities_icon} alt='Opportunities' className="w-4 h-4"></img>
         </button>
       </div>
@@ -97,7 +106,6 @@ function CSEAppCharacterCard({character_name, character_id, _logged_in, type}: a
   }
 
   var name_jsx = (<div className='m-2'>{character_name}</div>)
-
   return (
     <div className='flex flex-col justify-start items-start border-primary_accent w-full border-4'>
       {name_jsx}
