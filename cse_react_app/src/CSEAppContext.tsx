@@ -5,6 +5,7 @@ import * as CSEAppCommon from './CSEAppCommon'
 import * as CSEClientSettings from './CSEAppClientSettings'
 import type { CSEAppTab } from './CSEAppTab'
 import type { CSEAppTabRequest } from './CSEAppTabRequest'
+import { type CSEDragAndDropState, CreateDragAndDropState } from './CSEDropRequest'
 
 interface CSEAppContextType
 {
@@ -33,6 +34,8 @@ interface CSEAppContextType
   m_SetSecondaryTabList: any,
   m_TabRequests: Array<CSEAppTabRequest>,
   m_SetTabRequests: any,
+  m_DragAndDropState: CSEDragAndDropState,
+  m_SetDragAndDropState: any,
 }
 
 function CreateOrGetSessionUUID(): string
@@ -87,4 +90,6 @@ export const CSEAppContext = create<CSEAppContextType>((set) =>
   m_SetSecondaryTabList: (m_SecondaryTabList: any) => set({m_SecondaryTabList}),
   m_TabRequests: Array<CSEAppTabRequest>(),
   m_SetTabRequests: (m_TabRequests: any) => set({m_TabRequests}),    
+  m_DragAndDropState: CreateDragAndDropState(),
+  m_SetDragAndDropState: (m_DragAndDropState: CSEDragAndDropState) => set({m_DragAndDropState}),
 }))
