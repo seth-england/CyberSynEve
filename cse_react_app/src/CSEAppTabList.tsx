@@ -6,6 +6,7 @@ import type { CSEAppTabRequest } from './CSEAppTabRequest'
 import CSEAppOpportunityView from './CSEAppOpportunityView'
 import { BoundingBoxFromDomRect, CalculateIntersectionArea, PointInBoundingBox, type BoundingBox, type Point } from './CSEAppMath'
 import { CreateDragAndDropState, type CSEDragAndDropState } from './CSEDropRequest'
+import { CreateOpportunityViewPrius, CreateTab } from './CSEAppTabFactory'
 
 interface CSEAppTabListInput
 {
@@ -17,6 +18,9 @@ function CSEAppTabList(props: CSEAppTabListInput)
   const [tab_list, set_tab_list] = React.useState(new Array<CSEAppTab>())
   const tab_requests = CSEAppContext((state) => state.m_TabRequests)
   const set_tab_requests = CSEAppContext((state) => state.m_SetTabRequests)
+  const serialized_tab_requests = CSEAppContext((state) => state.m_SerializedTabRequests)
+  const set_serialized_tab_requests = CSEAppContext((state) => state.m_SetSerializedTabRequests)
+  const serialized_tab_requests_ref = React.useRef<Array<CSEAppTabRequest>>(serialized_tab_requests)
   const drag_tab_id = React.useRef<string | null>(null)
   const drag_tab = React.useRef<CSEAppTab | null>(null)
   const drag_ghost = React.useRef<HTMLDivElement | null>(null)
@@ -26,6 +30,25 @@ function CSEAppTabList(props: CSEAppTabListInput)
   const drag_and_drop_state_ref = React.useRef<CSEDragAndDropState>(drag_and_drop_state)
   const self_ref = React.useRef<HTMLDivElement | null>(null)
   
+  function UpdateGlobalTabRequestsRef()
+  {
+    serialized_tab_requests_ref.current = serialized_tab_requests
+  }
+  React.useEffect(() => {UpdateGlobalTabRequestsRef()}, [serialized_tab_requests])
+
+  function UpdateGlobalTabRequests(new_tab_list: CSEAppTab[])
+  {
+    // First remove all tab requests for this tab list
+    let new_serialized_tab_requests = serialized_tab_requests_ref.current.filter((request) => request.m_TargetListID !== props.m_ID)
+
+    for (const tab of new_tab_list)
+    {
+      new_serialized_tab_requests.push(tab.m_Request)
+    }
+
+    set_serialized_tab_requests(new_serialized_tab_requests)
+  }
+
   function HandleTabRequest()
   {
     for (const tab_request of tab_requests)
@@ -42,8 +65,17 @@ function CSEAppTabList(props: CSEAppTabListInput)
           return
         }
 
-        const new_tab: CSEAppTab = {m_Name: tab_request.m_Name, m_ID: tab_request.m_ID, m_Element: <CSEAppOpportunityView m_CharacterID={tab_request.m_Prius} />, m_DOMElement: React.createRef<HTMLDivElement>()}
-        set_tab_list([...tab_list, new_tab])
+        const new_tab = CreateTab(tab_request)
+        if (!new_tab)
+        {
+          const new_tab_requests = tab_requests.filter((elm) => elm.m_ID !== tab_request.m_ID)
+          set_tab_requests(new_tab_requests)
+          continue
+        }
+
+        var new_tab_list = [...tab_list, new_tab]
+        set_tab_list(new_tab_list)
+        UpdateGlobalTabRequests(new_tab_list)
       }
     }
   }
@@ -54,6 +86,7 @@ function CSEAppTabList(props: CSEAppTabListInput)
   {
     const new_tab_list = tab_list.filter((tab) => tab.m_ID !== tab_id)
     set_tab_list(new_tab_list)
+    UpdateGlobalTabRequests(new_tab_list)
 
     const new_drag_and_drop_state: CSEDragAndDropState = CreateDragAndDropState()
     set_drag_and_drop_state(new_drag_and_drop_state)
@@ -204,6 +237,7 @@ function CSEAppTabList(props: CSEAppTabListInput)
         {
           const new_tab_list = new_tab_list_local.filter((tab, index) => (tab.m_ID !== drag_tab_id.current || insert_index === index))
           set_tab_list(new_tab_list)
+          UpdateGlobalTabRequests(new_tab_list)
         }
         new_drag_and_drop_state.m_DropTargetListID = null
         new_drag_and_drop_state.m_IsDropped = false  
@@ -214,6 +248,7 @@ function CSEAppTabList(props: CSEAppTabListInput)
       {
         const new_tab_list = tab_list.filter((tab) => tab.m_ID !== drag_tab_id.current)
         set_tab_list(new_tab_list)
+        UpdateGlobalTabRequests(new_tab_list)
         set_drag_and_drop_state(new_drag_and_drop_state)
         drag_and_drop_state_ref.current = new_drag_and_drop_state
       }
@@ -355,6 +390,7 @@ function CSEAppTabList(props: CSEAppTabListInput)
     }
 
     let new_tab: CSEAppTab = drop_state.m_Element
+    new_tab.m_Request.m_TargetListID = props.m_ID
     let insert_index = -1
     const index = tab_list.findIndex((tab) => tab.m_ID === identify_drop_target_result.m_BestTabID)
 
@@ -385,6 +421,7 @@ function CSEAppTabList(props: CSEAppTabListInput)
       new_tab_list = [...tab_list.slice(0, index), new_tab, ...tab_list.slice(index)]
     }
     set_tab_list(new_tab_list)
+    UpdateGlobalTabRequests(new_tab_list)
     return [insert_index, new_tab_list]
   }
 

@@ -36,6 +36,8 @@ interface CSEAppContextType
   m_SetTabRequests: any,
   m_DragAndDropState: CSEDragAndDropState,
   m_SetDragAndDropState: any,
+  m_SerializedTabRequests: Array<CSEAppTabRequest>, // Keeps track of all tabs that have been created, so that we reload them
+  m_SetSerializedTabRequests: any,
 }
 
 function CreateOrGetSessionUUID(): string
@@ -92,4 +94,6 @@ export const CSEAppContext = create<CSEAppContextType>((set) =>
   m_SetTabRequests: (m_TabRequests: any) => set({m_TabRequests}),    
   m_DragAndDropState: CreateDragAndDropState(),
   m_SetDragAndDropState: (m_DragAndDropState: CSEDragAndDropState) => set({m_DragAndDropState}),
+  m_SerializedTabRequests: Array<CSEAppTabRequest>(),
+  m_SetSerializedTabRequests: (m_SerializedTabRequests: any) => set({m_SerializedTabRequests}),
 }))

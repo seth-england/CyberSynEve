@@ -1,13 +1,9 @@
 import * as CSEAppCommon from './CSEAppCommon'
 import React from 'react'
 import { CSEAppContext } from './CSEAppContext'
+import type { CSEAppOpportunityViewPrius } from './CSEAppTabRequest'
 
-interface CSEAppOpportunityViewInput
-{
-  m_CharacterID: number,
-}
-
-function CSEAppOpportunityView(props: CSEAppOpportunityViewInput)
+function CSEAppOpportunityView(props: CSEAppOpportunityViewPrius)
 {
   return (
     <div className=''>

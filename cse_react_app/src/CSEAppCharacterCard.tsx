@@ -4,7 +4,7 @@ import { BuildURL } from './CSEAppBuildURL'
 import { CSEAppContext } from './CSEAppContext'
 import type { PortraitResponse } from './CSEAppHTTP'
 import opportunities_icon from './assets/coins.png'
-import type { CSEAppTabRequest } from './CSEAppTabRequest'
+import { type CSEAppTabRequest, type CSEAppOpportunityViewPrius } from './CSEAppTabRequest'
 
 const STATE_INIT = 0
 const STATE_LOG_IN = 1
@@ -70,7 +70,8 @@ function CSEAppCharacterCard({character_name, character_id, _logged_in, type}: a
 
   function HandleOpportunitiesClick()
   {
-    const new_tab_request: CSEAppTabRequest = {m_Name: `${character_name} - Opportunities`, m_ID: crypto.randomUUID(), m_TargetListID: CSEAppCommon.TAB_LIST_PRIMARY, m_Type: CSEAppCommon.TAB_TYPE_OPPORTUNITIES, m_Prius: character_id}
+    const prius : CSEAppOpportunityViewPrius = {m_CharacterID: character_id}
+    const new_tab_request: CSEAppTabRequest = {m_Name: `${character_name} - Opportunities`, m_ID: crypto.randomUUID(), m_TargetListID: CSEAppCommon.TAB_LIST_PRIMARY, m_Type: CSEAppCommon.TAB_TYPE_OPPORTUNITIES, m_Prius: prius}
     set_tab_requests([...tab_requests, new_tab_request])
   }
 
