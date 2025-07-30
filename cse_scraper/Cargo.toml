@@ -1,0 +1,7 @@
+[package]
+name = "cse_scraper"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cse_common = { path = "../cse_common" }
