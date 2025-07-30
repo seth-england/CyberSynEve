@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 cse_common = { path = "../cse_common" }
+spacetimedb-sdk = "1.0"

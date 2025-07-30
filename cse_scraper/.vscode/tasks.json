@@ -1,0 +1,56 @@
+{
+	"version": "2.0.0",
+	"tasks":
+  [
+  {
+    "label": "generate_bindings",
+    "type": "shell",
+    "command": "spacetime generate --lang rust --out-dir ${workspaceFolder}/src/module_bindings --project-path ${workspaceFolder}/../cse_server",
+    "group": 
+    {
+      "kind": "build",
+      "isDefault": false
+    }
+  },
+  {
+    "label": "build_rust_debug",
+    "type": "shell",
+    "command": "cargo build",
+    "group": 
+    {
+      "kind": "build",
+      "isDefault": false
+    }
+  },
+  {
+    "label": "build_rust_release",
+    "type": "shell",
+    "command": "cargo build --release",
+    "group": 
+    {
+      "kind": "build",
+      "isDefault": false
+    }
+  },
+  {
+    "label": "pre_launch_debug",
+    "type": "shell",
+    "dependsOn": ["generate_bindings", "build_rust_debug"],
+    "dependsOrder": "sequence",
+    "group": {
+        "kind": "build",
+        "isDefault": false
+    }
+  },
+  {
+    "label": "pre_launch_release",
+    "type": "shell",
+    "dependsOn": ["generate_bindings", "build_rust_release"],
+    "dependsOrder": "sequence",
+    "group": {
+        "kind": "build",
+        "isDefault": false
+    }
+  }
+  ]
+}

@@ -1,0 +1,9 @@
+C:\Projects\CyberSynEve\cse_scraper\target\debug\deps\spacetimedb_data_structures-a499d3c80318d938.d: C:\Users\abstr\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\spacetimedb-data-structures-1.2.0\src\lib.rs C:\Users\abstr\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\spacetimedb-data-structures-1.2.0\src\error_stream.rs C:\Users\abstr\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\spacetimedb-data-structures-1.2.0\src\map.rs C:\Users\abstr\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\spacetimedb-data-structures-1.2.0\src\nstr.rs C:\Users\abstr\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\spacetimedb-data-structures-1.2.0\src\slim_slice.rs
+
+C:\Projects\CyberSynEve\cse_scraper\target\debug\deps\libspacetimedb_data_structures-a499d3c80318d938.rmeta: C:\Users\abstr\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\spacetimedb-data-structures-1.2.0\src\lib.rs C:\Users\abstr\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\spacetimedb-data-structures-1.2.0\src\error_stream.rs C:\Users\abstr\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\spacetimedb-data-structures-1.2.0\src\map.rs C:\Users\abstr\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\spacetimedb-data-structures-1.2.0\src\nstr.rs C:\Users\abstr\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\spacetimedb-data-structures-1.2.0\src\slim_slice.rs
+
+C:\Users\abstr\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\spacetimedb-data-structures-1.2.0\src\lib.rs:
+C:\Users\abstr\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\spacetimedb-data-structures-1.2.0\src\error_stream.rs:
+C:\Users\abstr\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\spacetimedb-data-structures-1.2.0\src\map.rs:
+C:\Users\abstr\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\spacetimedb-data-structures-1.2.0\src\nstr.rs:
+C:\Users\abstr\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\spacetimedb-data-structures-1.2.0\src\slim_slice.rs:
