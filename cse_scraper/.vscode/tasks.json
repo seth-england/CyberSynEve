@@ -1,3 +1,5 @@
+// "${workspaceFolder}/../SpacetimeDB/target/debug/spacetimedb-cli.exe
+
 {
 	"version": "2.0.0",
 	"tasks":
@@ -5,7 +7,7 @@
   {
     "label": "generate_bindings",
     "type": "shell",
-    "command": "spacetime generate --lang rust --out-dir ${workspaceFolder}/src/module_bindings --project-path ${workspaceFolder}/../cse_server",
+    "command": "spacetime generate -y --lang rust --out-dir ${workspaceFolder}/src/module_bindings --project-path ${workspaceFolder}/../cse_server",
     "group": 
     {
       "kind": "build",
@@ -33,9 +35,49 @@
     }
   },
   {
+    "label": "build_common_debug",
+    "type": "shell",
+    "command": "cargo build --manifest-path ../cse_common/Cargo.toml",
+    "group": 
+    {
+      "kind": "build",
+      "isDefault": false
+    }
+  },
+  {
+    "label": "build_common_release",
+    "type": "shell",
+    "command": "cargo build --manifest-path ../cse_common/Cargo.toml --release",
+    "group": 
+    {
+      "kind": "build",
+      "isDefault": false
+    }
+  },
+    {
+    "label": "build_http_helpers_debug",
+    "type": "shell",
+    "command": "cargo build --manifest-path ../cse_http_helpers/Cargo.toml",
+    "group": 
+    {
+      "kind": "build",
+      "isDefault": false
+    }
+  },
+  {
+    "label": "build_http_helpers_release",
+    "type": "shell",
+    "command": "cargo build --manifest-path ../cse_http_helpers/Cargo.toml --release",
+    "group": 
+    {
+      "kind": "build",
+      "isDefault": false
+    }
+  },
+  {
     "label": "pre_launch_debug",
     "type": "shell",
-    "dependsOn": ["generate_bindings", "build_rust_debug"],
+    "dependsOn": ["generate_bindings", "build_common_debug", "build_rust_debug", "build_http_helpers_debug"],
     "dependsOrder": "sequence",
     "group": {
         "kind": "build",
@@ -45,7 +87,7 @@
   {
     "label": "pre_launch_release",
     "type": "shell",
-    "dependsOn": ["generate_bindings", "build_rust_release"],
+    "dependsOn": ["generate_bindings", "build_common_release", "build_rust_release", "build_http_helpers_release"],
     "dependsOrder": "sequence",
     "group": {
         "kind": "build",

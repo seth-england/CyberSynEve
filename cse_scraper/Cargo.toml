@@ -5,4 +5,12 @@ edition = "2024"
 
 [dependencies]
 cse_common = { path = "../cse_common" }
-spacetimedb-sdk = "1.0"
+cse_http_helpers = { path = "../cse_http_helpers" }
+spacetimedb-sdk = "1.3"
+tokio = { version = "1.47.0", features = ["full"] }
+reqwest = { version = "0.12.22" }
+lazy_static = "1.5.0"
+futures = "0.3.31"
+serde = "1.0.219"
+serde_json = "1.0.142"
+spacetimedb = "1.3.0"

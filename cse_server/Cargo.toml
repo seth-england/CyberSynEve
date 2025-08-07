@@ -1,5 +1,5 @@
 [package]
-name = "spacetime-module"
+name = "cse_server"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,5 +9,10 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-spacetimedb = "1.2.0"
+spacetimedb = "1.3.0"
 log = "0.4"
+cse_common = { path = "../cse_common" }
+serde = { version = "1.0.219", features = ["derive"] }
+
+[profile.release]
+debug = true
