@@ -1,4 +1,4 @@
-pub mod http_types;
+pub mod cse_math_types;
 pub mod cse_substate;
 use std::pin::Pin;
 use std::future::Future;
@@ -16,6 +16,7 @@ macro_rules! eve_url
 pub const URL_SERVER: &str = "http://127.0.0.1:3000";
 
 pub const URL_EVE_REGIONS: &str = eve_url!("universe/regions/");
+pub const URL_EVE_CONSTELLATIONS: &str = eve_url!("universe/constellations/");
 
 pub const DATABASE_NAME: &str = "cse-server";
 

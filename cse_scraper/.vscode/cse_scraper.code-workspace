@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../cse_server"
+		},
+		{
+			"path": "../../cse_common"
+		}
+	],
+  "settings": {}
+}

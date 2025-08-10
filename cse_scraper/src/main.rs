@@ -1,6 +1,7 @@
 mod module_bindings;
 mod cse_scraper_state;
 mod cse_scraper_get_regions;
+mod cse_scraper_get_constellations;
 use module_bindings::*;
 use cse_common::*;
 use spacetimedb_sdk::DbContext;
@@ -27,7 +28,7 @@ fn on_versions_error(ctx: &ErrorContext, error: spacetimedb_sdk::Error) -> ()
   panic!("Failed to fetch versions");
 }
 
-fn on_region_applied(ctx: &SubscriptionEventContext) -> ()
+fn on_regions_applied(ctx: &SubscriptionEventContext) -> ()
 {
   println!("Fetched regions from DB {}{}", file!(), line!());
   let mut scraper_state = cse_scraper_state::G_SCRAPER_STATE.lock().unwrap();
@@ -37,9 +38,24 @@ fn on_region_applied(ctx: &SubscriptionEventContext) -> ()
   }
 }
 
-fn on_region_error(ctx: &ErrorContext, error: spacetimedb_sdk::Error) -> ()
+fn on_regions_error(ctx: &ErrorContext, error: spacetimedb_sdk::Error) -> ()
 {
-  panic!("Failed to fetch regions");
+  panic!("Failed to fetch regions from db");
+}
+
+fn on_constellations_applied(ctx: &SubscriptionEventContext) -> ()
+{
+  println!("Fetched constellations from DB {}{}", file!(), line!());
+  let mut scraper_state = cse_scraper_state::G_SCRAPER_STATE.lock().unwrap();
+  if scraper_state.constellations_state.get_state() == ResourceScrapeState::RetrievingFromDB
+  {
+    scraper_state.constellations_state.set_state(ResourceScrapeState::RetrievedFromDB);
+  }
+}
+
+fn on_constellations_error(ctx: &ErrorContext, error: spacetimedb_sdk::Error) -> ()
+{
+  panic!("Failed to fetch constellations from db");
 }
 
 #[tokio::main]
@@ -65,11 +81,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
     .on_applied
     (|ctx| -> () 
     {
-      on_region_applied(ctx);
+      on_regions_applied(ctx);
       return ();
     })
-    .on_error(on_region_error)
-    .subscribe(["SELECT * from region"]);
+    .on_error(on_regions_error)
+    .subscribe(["SELECT * from regions"]);
+
+    // subscribe to constellations
+    ctx
+    .subscription_builder()
+    .on_applied
+    (|ctx| -> () 
+    {
+      on_constellations_applied(ctx);
+      return ();
+    })
+    .on_error(on_constellations_error)
+    .subscribe(["SELECT * from constellations"]);
+
 
     // start db thread
     ctx.run_threaded();
@@ -81,7 +110,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>
   while true
   {
     let mut tasks = Vec::<cse_common::AsyncAnyFunction>::new();
-    
     {
       let unwrapped_state = G_SCRAPER_STATE.lock().unwrap();
       let mut local_scrape_state: CSEScraperState = unwrapped_state.clone();

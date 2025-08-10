@@ -1,7 +1,16 @@
 use cse_http_helpers;
-use cse_common::{cse_substate::CSESubstateTrait, http_types::*};
-
+use cse_common::{cse_substate::CSESubstateTrait};
+use serde::{Serialize, Deserialize};
 use crate::{cse_scraper_state::{ResourceScrapeState, G_DB_CONN, G_SCRAPER_STATE}, module_bindings::add_region};
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct EVERegion
+{
+  pub region_id: i64,
+  pub name: String,
+  pub description: Option<String>,
+  pub constellations: Vec<i64>
+}
 
 async fn get_regions_helper(region_ids: Vec<i64>)
 {

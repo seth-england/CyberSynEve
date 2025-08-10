@@ -1,6 +1,6 @@
-use spacetimedb::{table, Table, ReducerContext, SpacetimeType};
+use spacetimedb::{table, Table, ReducerContext};
 
-#[table(name = region, public)]
+#[table(name = regions, public)]
 pub struct Region
 {
   #[primary_key]
@@ -18,7 +18,7 @@ pub fn add_region(ctx: &ReducerContext, region_id: i64, region_name: String, des
     region_name, 
     description,
   };
-  let insert_result = ctx.db.region().try_insert(new_region);
+  let insert_result = ctx.db.regions().try_insert(new_region);
   match insert_result
   {
     Ok(row) =>

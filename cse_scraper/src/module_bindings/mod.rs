@@ -6,24 +6,34 @@
 #![allow(unused, clippy::all)]
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
+pub mod add_constellation_reducer;
 pub mod add_region_reducer;
+pub mod constellation_type;
+pub mod constellations_table;
 pub mod cse_server_version_type;
+pub mod db_vector_3_f_64_type;
 pub mod identity_connected_reducer;
 pub mod identity_disconnected_reducer;
-pub mod region_table;
 pub mod region_type;
+pub mod regions_table;
 pub mod version_table;
 
+pub use add_constellation_reducer::{
+    add_constellation, set_flags_for_add_constellation, AddConstellationCallbackId,
+};
 pub use add_region_reducer::{add_region, set_flags_for_add_region, AddRegionCallbackId};
+pub use constellation_type::Constellation;
+pub use constellations_table::*;
 pub use cse_server_version_type::CseServerVersion;
+pub use db_vector_3_f_64_type::DbVector3F64;
 pub use identity_connected_reducer::{
     identity_connected, set_flags_for_identity_connected, IdentityConnectedCallbackId,
 };
 pub use identity_disconnected_reducer::{
     identity_disconnected, set_flags_for_identity_disconnected, IdentityDisconnectedCallbackId,
 };
-pub use region_table::*;
 pub use region_type::Region;
+pub use regions_table::*;
 pub use version_table::*;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -34,6 +44,9 @@ pub use version_table::*;
 /// to indicate which reducer caused the event.
 
 pub enum Reducer {
+    AddConstellation {
+        constellation: Constellation,
+    },
     AddRegion {
         region_id: i64,
         region_name: String,
@@ -50,6 +63,7 @@ impl __sdk::InModule for Reducer {
 impl __sdk::Reducer for Reducer {
     fn reducer_name(&self) -> &'static str {
         match self {
+            Reducer::AddConstellation { .. } => "add_constellation",
             Reducer::AddRegion { .. } => "add_region",
             Reducer::IdentityConnected => "identity_connected",
             Reducer::IdentityDisconnected => "identity_disconnected",
@@ -60,6 +74,10 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
     type Error = __sdk::Error;
     fn try_from(value: __ws::ReducerCallInfo<__ws::BsatnFormat>) -> __sdk::Result<Self> {
         match &value.reducer_name[..] {
+            "add_constellation" => Ok(__sdk::parse_reducer_args::<
+                add_constellation_reducer::AddConstellationArgs,
+            >("add_constellation", &value.args)?
+            .into()),
             "add_region" => Ok(
                 __sdk::parse_reducer_args::<add_region_reducer::AddRegionArgs>(
                     "add_region",
@@ -89,7 +107,8 @@ impl TryFrom<__ws::ReducerCallInfo<__ws::BsatnFormat>> for Reducer {
 #[allow(non_snake_case)]
 #[doc(hidden)]
 pub struct DbUpdate {
-    region: __sdk::TableUpdate<Region>,
+    constellations: __sdk::TableUpdate<Constellation>,
+    regions: __sdk::TableUpdate<Region>,
     version: __sdk::TableUpdate<CseServerVersion>,
 }
 
@@ -99,9 +118,12 @@ impl TryFrom<__ws::DatabaseUpdate<__ws::BsatnFormat>> for DbUpdate {
         let mut db_update = DbUpdate::default();
         for table_update in raw.tables {
             match &table_update.table_name[..] {
-                "region" => db_update
-                    .region
-                    .append(region_table::parse_table_update(table_update)?),
+                "constellations" => db_update
+                    .constellations
+                    .append(constellations_table::parse_table_update(table_update)?),
+                "regions" => db_update
+                    .regions
+                    .append(regions_table::parse_table_update(table_update)?),
                 "version" => db_update
                     .version
                     .append(version_table::parse_table_update(table_update)?),
@@ -131,8 +153,11 @@ impl __sdk::DbUpdate for DbUpdate {
     ) -> AppliedDiff<'_> {
         let mut diff = AppliedDiff::default();
 
-        diff.region = cache
-            .apply_diff_to_table::<Region>("region", &self.region)
+        diff.constellations = cache
+            .apply_diff_to_table::<Constellation>("constellations", &self.constellations)
+            .with_updates_by_pk(|row| &row.constellation_id);
+        diff.regions = cache
+            .apply_diff_to_table::<Region>("regions", &self.regions)
             .with_updates_by_pk(|row| &row.region_id);
         diff.version = cache
             .apply_diff_to_table::<CseServerVersion>("version", &self.version)
@@ -146,7 +171,8 @@ impl __sdk::DbUpdate for DbUpdate {
 #[allow(non_snake_case)]
 #[doc(hidden)]
 pub struct AppliedDiff<'r> {
-    region: __sdk::TableAppliedDiff<'r, Region>,
+    constellations: __sdk::TableAppliedDiff<'r, Constellation>,
+    regions: __sdk::TableAppliedDiff<'r, Region>,
     version: __sdk::TableAppliedDiff<'r, CseServerVersion>,
 }
 
@@ -160,7 +186,12 @@ impl<'r> __sdk::AppliedDiff<'r> for AppliedDiff<'r> {
         event: &EventContext,
         callbacks: &mut __sdk::DbCallbacks<RemoteModule>,
     ) {
-        callbacks.invoke_table_row_callbacks::<Region>("region", &self.region, event);
+        callbacks.invoke_table_row_callbacks::<Constellation>(
+            "constellations",
+            &self.constellations,
+            event,
+        );
+        callbacks.invoke_table_row_callbacks::<Region>("regions", &self.regions, event);
         callbacks.invoke_table_row_callbacks::<CseServerVersion>("version", &self.version, event);
     }
 }
@@ -737,7 +768,8 @@ impl __sdk::SpacetimeModule for RemoteModule {
     type SubscriptionHandle = SubscriptionHandle;
 
     fn register_tables(client_cache: &mut __sdk::ClientCache<Self>) {
-        region_table::register_table(client_cache);
+        constellations_table::register_table(client_cache);
+        regions_table::register_table(client_cache);
         version_table::register_table(client_cache);
     }
 }

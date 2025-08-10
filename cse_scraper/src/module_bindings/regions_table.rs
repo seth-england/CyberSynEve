@@ -7,42 +7,42 @@
 use super::region_type::Region;
 use spacetimedb_sdk::__codegen::{self as __sdk, __lib, __sats, __ws};
 
-/// Table handle for the table `region`.
+/// Table handle for the table `regions`.
 ///
-/// Obtain a handle from the [`RegionTableAccess::region`] method on [`super::RemoteTables`],
-/// like `ctx.db.region()`.
+/// Obtain a handle from the [`RegionsTableAccess::regions`] method on [`super::RemoteTables`],
+/// like `ctx.db.regions()`.
 ///
 /// Users are encouraged not to explicitly reference this type,
 /// but to directly chain method calls,
-/// like `ctx.db.region().on_insert(...)`.
-pub struct RegionTableHandle<'ctx> {
+/// like `ctx.db.regions().on_insert(...)`.
+pub struct RegionsTableHandle<'ctx> {
     imp: __sdk::TableHandle<Region>,
     ctx: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
 #[allow(non_camel_case_types)]
-/// Extension trait for access to the table `region`.
+/// Extension trait for access to the table `regions`.
 ///
 /// Implemented for [`super::RemoteTables`].
-pub trait RegionTableAccess {
+pub trait RegionsTableAccess {
     #[allow(non_snake_case)]
-    /// Obtain a [`RegionTableHandle`], which mediates access to the table `region`.
-    fn region(&self) -> RegionTableHandle<'_>;
+    /// Obtain a [`RegionsTableHandle`], which mediates access to the table `regions`.
+    fn regions(&self) -> RegionsTableHandle<'_>;
 }
 
-impl RegionTableAccess for super::RemoteTables {
-    fn region(&self) -> RegionTableHandle<'_> {
-        RegionTableHandle {
-            imp: self.imp.get_table::<Region>("region"),
+impl RegionsTableAccess for super::RemoteTables {
+    fn regions(&self) -> RegionsTableHandle<'_> {
+        RegionsTableHandle {
+            imp: self.imp.get_table::<Region>("regions"),
             ctx: std::marker::PhantomData,
         }
     }
 }
 
-pub struct RegionInsertCallbackId(__sdk::CallbackId);
-pub struct RegionDeleteCallbackId(__sdk::CallbackId);
+pub struct RegionsInsertCallbackId(__sdk::CallbackId);
+pub struct RegionsDeleteCallbackId(__sdk::CallbackId);
 
-impl<'ctx> __sdk::Table for RegionTableHandle<'ctx> {
+impl<'ctx> __sdk::Table for RegionsTableHandle<'ctx> {
     type Row = Region;
     type EventContext = super::EventContext;
 
@@ -53,51 +53,51 @@ impl<'ctx> __sdk::Table for RegionTableHandle<'ctx> {
         self.imp.iter()
     }
 
-    type InsertCallbackId = RegionInsertCallbackId;
+    type InsertCallbackId = RegionsInsertCallbackId;
 
     fn on_insert(
         &self,
         callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
-    ) -> RegionInsertCallbackId {
-        RegionInsertCallbackId(self.imp.on_insert(Box::new(callback)))
+    ) -> RegionsInsertCallbackId {
+        RegionsInsertCallbackId(self.imp.on_insert(Box::new(callback)))
     }
 
-    fn remove_on_insert(&self, callback: RegionInsertCallbackId) {
+    fn remove_on_insert(&self, callback: RegionsInsertCallbackId) {
         self.imp.remove_on_insert(callback.0)
     }
 
-    type DeleteCallbackId = RegionDeleteCallbackId;
+    type DeleteCallbackId = RegionsDeleteCallbackId;
 
     fn on_delete(
         &self,
         callback: impl FnMut(&Self::EventContext, &Self::Row) + Send + 'static,
-    ) -> RegionDeleteCallbackId {
-        RegionDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
+    ) -> RegionsDeleteCallbackId {
+        RegionsDeleteCallbackId(self.imp.on_delete(Box::new(callback)))
     }
 
-    fn remove_on_delete(&self, callback: RegionDeleteCallbackId) {
+    fn remove_on_delete(&self, callback: RegionsDeleteCallbackId) {
         self.imp.remove_on_delete(callback.0)
     }
 }
 
 #[doc(hidden)]
 pub(super) fn register_table(client_cache: &mut __sdk::ClientCache<super::RemoteModule>) {
-    let _table = client_cache.get_or_make_table::<Region>("region");
+    let _table = client_cache.get_or_make_table::<Region>("regions");
     _table.add_unique_constraint::<i64>("region_id", |row| &row.region_id);
 }
-pub struct RegionUpdateCallbackId(__sdk::CallbackId);
+pub struct RegionsUpdateCallbackId(__sdk::CallbackId);
 
-impl<'ctx> __sdk::TableWithPrimaryKey for RegionTableHandle<'ctx> {
-    type UpdateCallbackId = RegionUpdateCallbackId;
+impl<'ctx> __sdk::TableWithPrimaryKey for RegionsTableHandle<'ctx> {
+    type UpdateCallbackId = RegionsUpdateCallbackId;
 
     fn on_update(
         &self,
         callback: impl FnMut(&Self::EventContext, &Self::Row, &Self::Row) + Send + 'static,
-    ) -> RegionUpdateCallbackId {
-        RegionUpdateCallbackId(self.imp.on_update(Box::new(callback)))
+    ) -> RegionsUpdateCallbackId {
+        RegionsUpdateCallbackId(self.imp.on_update(Box::new(callback)))
     }
 
-    fn remove_on_update(&self, callback: RegionUpdateCallbackId) {
+    fn remove_on_update(&self, callback: RegionsUpdateCallbackId) {
         self.imp.remove_on_update(callback.0)
     }
 }
@@ -113,29 +113,29 @@ pub(super) fn parse_table_update(
     })
 }
 
-/// Access to the `region_id` unique index on the table `region`,
+/// Access to the `region_id` unique index on the table `regions`,
 /// which allows point queries on the field of the same name
-/// via the [`RegionRegionIdUnique::find`] method.
+/// via the [`RegionsRegionIdUnique::find`] method.
 ///
 /// Users are encouraged not to explicitly reference this type,
 /// but to directly chain method calls,
-/// like `ctx.db.region().region_id().find(...)`.
-pub struct RegionRegionIdUnique<'ctx> {
+/// like `ctx.db.regions().region_id().find(...)`.
+pub struct RegionsRegionIdUnique<'ctx> {
     imp: __sdk::UniqueConstraintHandle<Region, i64>,
     phantom: std::marker::PhantomData<&'ctx super::RemoteTables>,
 }
 
-impl<'ctx> RegionTableHandle<'ctx> {
-    /// Get a handle on the `region_id` unique index on the table `region`.
-    pub fn region_id(&self) -> RegionRegionIdUnique<'ctx> {
-        RegionRegionIdUnique {
+impl<'ctx> RegionsTableHandle<'ctx> {
+    /// Get a handle on the `region_id` unique index on the table `regions`.
+    pub fn region_id(&self) -> RegionsRegionIdUnique<'ctx> {
+        RegionsRegionIdUnique {
             imp: self.imp.get_unique_constraint::<i64>("region_id"),
             phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl<'ctx> RegionRegionIdUnique<'ctx> {
+impl<'ctx> RegionsRegionIdUnique<'ctx> {
     /// Find the subscribed row whose `region_id` column value is equal to `col_val`,
     /// if such a row is present in the client cache.
     pub fn find(&self, col_val: &i64) -> Option<Region> {

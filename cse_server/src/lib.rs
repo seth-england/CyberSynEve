@@ -1,5 +1,7 @@
 mod cse_server_regions;
 mod cse_server_versions;
+mod cse_server_types;
+mod cse_server_constellations;
 use spacetimedb::{table, reducer, Table, ReducerContext, Identity, Timestamp};
 
 #[spacetimedb::reducer(init)]

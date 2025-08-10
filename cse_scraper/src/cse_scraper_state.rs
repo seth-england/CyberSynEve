@@ -80,6 +80,7 @@ pub struct CSEScraperState
 {
   pub versions_state: CSESubstate<ResourceScrapeState>,
   pub regions_state: CSESubstate<ResourceScrapeState>,
+  pub constellations_state: CSESubstate<ResourceScrapeState>,
   pub universe_version_valid: bool,
 }
 
@@ -87,6 +88,7 @@ lazy_static! {
     pub static ref G_SCRAPER_STATE: Mutex<CSEScraperState> = Mutex::new(CSEScraperState {
         versions_state: CSESubstate::new(ResourceScrapeState::RetrievingFromDB),
         regions_state: CSESubstate::new(ResourceScrapeState::RetrievingFromDB),
+        constellations_state: CSESubstate::new(ResourceScrapeState::RetrievingFromDB),
         universe_version_valid: false,
     });
 
